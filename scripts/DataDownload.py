@@ -33,29 +33,44 @@ def get_variable(fname):
     return fname.split("/")[-1].split("_")[0]
 
 
+def get_mean_date(fname):
+
+    return fname.split("/")[-1].split("_")[1]
+
+
+def new_mean_img(mean_img, daily_img):
+
+    n = int(get_mean_date(fname)[2])
+
+    return (n*mean_img + daily_img)/(n + 1)
+
 
 for f in glob.glob("../raw_images/*.nc"):
 
-    img_day = get_dates(f)[2]
+    if get_dates(f)[2] == '01':
 
-    if img_day == '01':
+        # figure out what doesn't work with this
+        shutil.copy2(f, "../mean_images/" + get_variable(f) + "_" + "-".join(get_dates(f)))
 
-        shutil.copy2(f, "../mean_images/" + get_variable(f) + "_" + str(get_dates(f)[0]) + "-" + str(get_dates(f)[1]))
-'''
+    else:
 
-    with rio.open(f) as src:
-        projection = src.transform
-        data = src.read()
+        variable = get_variable(f)
 
-    plt.imshow(data[0,:,:])
-    plt.show()
-    print(data)
+        with rio.open(f) as src:
+            day_img = src.read()
+
+        old_mean = glob.glob("../mean_images/" + variable + "*")[0]
+
+        with rio.open(old_mean) as src:
+            mean_img = src.read()
+
+        new_mean = new_mean_img(mean_img, day_img)
 
 
-    print(f)
+
 
 # cronjob
 
 
-'''
+
 
