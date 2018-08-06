@@ -94,7 +94,8 @@ def switch(x):
     return {
         'precip': {'abbreviation': 'pr', 'variable': 'var=precipitation_amount'},
         'tempmax': {'abbreviation': 'tmmx', 'variable': 'var=daily_maximum_temperature'},
-        'tempmin': {'abbreviation': 'tmmn', 'variable': 'var=daily_minimum_temperature'}
+        'tempmin': {'abbreviation': 'tmmn', 'variable': 'var=daily_minimum_temperature'},
+        'pet':    {'abbreviation': 'pet', 'variable': 'var=daily_mean_reference_evapotranspiration_grass'}
     }.get(x, None)
 
 
@@ -105,10 +106,10 @@ def build_request(inp):
             bnds = src.bounds
 
         bounds = {
-        'north': bnds[3],
-        'south':bnds[1],
-        'east': bnds[2],
-        'west': bnds[0]
+            'north': round(bnds[3]) + 1,
+            'south': round(bnds[1]) - 1,
+            'east': round(bnds[2]) + 1,
+            'west': round(bnds[0]) - 1
         }
     else:
         bounds = {

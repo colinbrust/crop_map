@@ -1,18 +1,19 @@
 from DataCollectionThredds import build_request
 from argparse import Namespace
 import datetime
+import os
+import numpy as np
 import glob
 import rasterio as rio
 import matplotlib.pyplot as plt
 import shutil
 import fiona
+import utilsRaster
 
+def download_data(d):
 
-def download_data():
-
-    d = str(datetime.date.today() - datetime.timedelta(days=1))
-
-    request_inputs = Namespace(BBoxType='vectorFile', attributes=['precip', 'tempmax', 'tempmin'],
+    #GET ET CODE FOR THE FUNCTION
+    request_inputs = Namespace(BBoxType='vectorFile', attributes=['precip', 'pet'],
                                base_url='http://thredds.northwestknowledge.net:8080/thredds/ncss', date_end=d,
                                date_start=d, filename="../boundaries/state_boundaries/MT.geojson", flip=True,
                                output_folder='../raw_images/')
@@ -20,57 +21,50 @@ def download_data():
     build_request(request_inputs)
 
 
-#download_data()
+def get_raw_date():
 
-
-def get_dates(fname):
+    fname = glob.glob("../raw_images/*.nc")[0]
 
     return fname.split("/")[-1].split("_")[1].replace("F", "").split("-")
 
 
-def get_variable(fname):
+def get_raw_var(fname):
 
     return fname.split("/")[-1].split("_")[0]
 
 
-def get_mean_date(fname):
+def check_date():
 
-    return fname.split("/")[-1].split("_")[1]
-
-
-def new_mean_img(mean_img, daily_img):
-
-    n = int(get_mean_date(fname)[2])
-
-    return (n*mean_img + daily_img)/(n + 1)
+    if get_raw_date()[2] == '01':
+        return True
+    return False
 
 
-for f in glob.glob("../raw_images/*.nc"):
+def sum_images(variable):
 
-    if get_dates(f)[2] == '01':
+    summed_image = glob.glob("../mean_images/" + variable + "*" + "-".join(get_raw_date()[0:2]) + "*")
+    summed_image = utilsRaster.RasterParameterIO(summed_image)
 
-        # figure out what doesn't work with this
-        shutil.copy2(f, "../mean_images/" + get_variable(f) + "_" + "-".join(get_dates(f)))
+    current_image = glob.glob("../raw_images/" + variable + "*")
+    current_image = utilsRaster.RasterParameterIO(current_image)
+
+    new_image = summed_image.array + np.squeeze(current_image.array)
+
+    out_name = "../mean_images/" + get_raw_var(f) + "_" + "-".join(get_raw_date()[0:2]) + ".tif"
+
+    summed_image.write_array_to_geotiff(out_name, new_image)
+
+
+def make_sum():
+
+    if check_date():
+
+        for f in glob.glob("../raw_images/*.nc"):
+
+            first_image = utilsRaster.RasterParameterIO(f)
+            out_name = "../mean_images/" + get_raw_var(f) + "_" + "-".join(get_raw_date()[0:2]) + ".tif"
+            first_image.write_array_to_geotiff(out_name, np.squeeze(first_image.array))
 
     else:
-
-        variable = get_variable(f)
-
-        with rio.open(f) as src:
-            day_img = src.read()
-
-        old_mean = glob.glob("../mean_images/" + variable + "*")[0]
-
-        with rio.open(old_mean) as src:
-            mean_img = src.read()
-
-        new_mean = new_mean_img(mean_img, day_img)
-
-
-
-
-# cronjob
-
-
-
-
+        sum_images("precip")
+        sum_images("et")
