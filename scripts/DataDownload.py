@@ -12,7 +12,6 @@ import utilsRaster
 
 def download_data(d):
 
-    #GET ET CODE FOR THE FUNCTION
     request_inputs = Namespace(BBoxType='vectorFile', attributes=['precip', 'pet'],
                                base_url='http://thredds.northwestknowledge.net:8080/thredds/ncss', date_end=d,
                                date_start=d, filename="../boundaries/state_boundaries/MT.geojson", flip=True,
@@ -42,17 +41,17 @@ def check_date():
 
 def sum_images(variable):
 
-    summed_image = glob.glob("../mean_images/" + variable + "*" + "-".join(get_raw_date()[0:2]) + "*")
+    summed_image = glob.glob("../mean_images/" + variable + "*" + "-".join(get_raw_date()[0:2]) + "*")[0]
     summed_image = utilsRaster.RasterParameterIO(summed_image)
 
-    current_image = glob.glob("../raw_images/" + variable + "*")
+    current_image = glob.glob("../raw_images/" + variable + "*")[0]
     current_image = utilsRaster.RasterParameterIO(current_image)
 
-    new_image = summed_image.array + np.squeeze(current_image.array)
+    new_image = summed_image.array + current_image.array
 
-    out_name = "../mean_images/" + get_raw_var(f) + "_" + "-".join(get_raw_date()[0:2]) + ".tif"
+    out_name = "../mean_images/" + variable + "_" + "-".join(get_raw_date()[0:2]) + ".tif"
 
-    summed_image.write_array_to_geotiff(out_name, new_image)
+    summed_image.write_array_to_geotiff(out_name, np.squeeze(new_image))
 
 
 def make_sum():
@@ -66,5 +65,6 @@ def make_sum():
             first_image.write_array_to_geotiff(out_name, np.squeeze(first_image.array))
 
     else:
+
         sum_images("precip")
-        sum_images("et")
+        sum_images("pet")
