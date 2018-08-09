@@ -1,13 +1,9 @@
 from DataCollectionThredds import build_request
 from argparse import Namespace
-import datetime
-import os
 import numpy as np
 import glob
 import rasterio as rio
-import matplotlib.pyplot as plt
-import shutil
-import fiona
+import rasterstats
 import utilsRaster
 
 def download_data(d):
@@ -27,10 +23,14 @@ def get_raw_date():
     return fname.split("/")[-1].split("_")[1].replace("F", "").split("-")
 
 
-def get_raw_var(fname):
+def get_var(fname):
 
     return fname.split("/")[-1].split("_")[0]
 
+
+def get_mean_date(fname):
+
+    return fname.split("/")[-1].split("_")[1]
 
 def check_date():
 
@@ -61,10 +61,45 @@ def make_sum():
         for f in glob.glob("../raw_images/*.nc"):
 
             first_image = utilsRaster.RasterParameterIO(f)
-            out_name = "../mean_images/" + get_raw_var(f) + "_" + "-".join(get_raw_date()[0:2]) + ".tif"
+            out_name = "../mean_images/" + get_var(f) + "_" + "-".join(get_raw_date()[0:2]) + ".tif"
             first_image.write_array_to_geotiff(out_name, np.squeeze(first_image.array))
 
     else:
 
         sum_images("precip")
         sum_images("pet")
+
+
+def dict_from_json(j):
+
+    return [j['properties']['NAME'], j['properties']['mean']]
+
+def agg_by_county(f):
+
+
+    dat = utilsRaster.RasterParameterIO(f)
+    dat.affine = rio.Affine(0.041666666666666664, 0.0, -117.03749996666667,
+                            0.0, -0.0416666666666667, 49.42083333333334)
+
+    #### Ask about method for merging all counties ####
+    j = rasterstats.zonal_stats("../boundaries/state_boundaries/MT.geojson",
+                                np.squeeze(dat.array),
+                                stats="mean",
+                                affine=dat.affine,
+                                geojson_out = True)
+
+    return map(dict_from_json, j)
+
+
+
+
+
+test = agg_by_county("../mean_images/pet_1980-01.tif")
+
+print(test)
+
+
+
+
+
+
