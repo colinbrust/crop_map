@@ -14,8 +14,13 @@ def daily_process(date):
     [os.remove(f) for f in glob.glob("../raw_images/*.nc")]
 
 
-d = datetime.date(1981, 8, 1)
+print("Hello World!")
+
+
+'''
+d = datetime.date(1980, 8, 1)
 
 for i in range(13522):
     daily_process(str(d))
     d = d + datetime.timedelta(days=1)
+'''
