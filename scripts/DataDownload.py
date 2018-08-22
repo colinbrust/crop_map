@@ -6,6 +6,9 @@ import rasterio as rio
 import rasterstats
 import utilsRaster
 import pandas as pd
+import requests
+import datetime
+import os
 from scipy import signal
 
 
@@ -35,6 +38,7 @@ def get_mean_date(fname):
 
     return fname.split("/")[-1].split("_")[1].replace(".tif", "")
 
+
 def check_date():
 
     if get_raw_date()[2] == '01':
@@ -44,7 +48,11 @@ def check_date():
 
 def sum_images(variable):
 
-    summed_image = glob.glob("../mean_images/" + variable + "*" + "-".join(get_raw_date()[0:2]) + "*")[0]
+    date_use = "-".join(get_raw_date())
+    date_use = datetime.datetime.strptime(date_use, "%Y-%m-%d").date()
+    date_use_old = date_use - datetime.timedelta(days=1)
+
+    summed_image = glob.glob("../mean_images/" + variable + "*" + str(date_use_old) + "*")[0]
     summed_image = utilsRaster.RasterParameterIO(summed_image)
 
     current_image = glob.glob("../raw_images/" + variable + "*")[0]
@@ -52,9 +60,12 @@ def sum_images(variable):
 
     new_image = summed_image.array + current_image.array
 
-    out_name = "../mean_images/" + variable + "_" + "-".join(get_raw_date()[0:2]) + ".tif"
+    out_name = "../mean_images/" + variable + "_" + str(date_use) + ".tif"
+    del_name = "../mean_images/" + variable + "_" + str(date_use_old) + ".tif"
 
     summed_image.write_array_to_geotiff(out_name, np.squeeze(new_image))
+
+    os.remove(del_name)
 
 
 def make_sum():
@@ -64,13 +75,24 @@ def make_sum():
         for f in glob.glob("../raw_images/*.nc"):
 
             first_image = utilsRaster.RasterParameterIO(f)
-            out_name = "../mean_images/" + get_var(f) + "_" + "-".join(get_raw_date()[0:2]) + ".tif"
+            out_name = "../mean_images/" + get_var(f) + "_" + "-".join(get_raw_date()[0:3]) + ".tif"
             first_image.write_array_to_geotiff(out_name, np.squeeze(first_image.array))
 
     else:
 
         sum_images("precip")
         sum_images("pet")
+
+
+def download_latest():
+
+    date_in = glob.glob("../mean_images/precip*")[-1]
+    date_in = get_mean_date(date_in)
+    date_in = datetime.datetime.strptime(date_in, "%Y-%m-%d") + datetime.timedelta(days=1)
+
+    end = datetime.datetime.today() - datetime.timedelta(days=1)
+    return [date_in.date() + datetime.timedelta(days=x) for x in range(0, (end - date_in).days)]
+
 
 
 def state_from_fname(fname):
@@ -106,11 +128,11 @@ def agg_by_county(f):
                                     np.squeeze(dat.array),
                                     stats="mean",
                                     affine=dat.affine,
-                                    geojson_out = True)
+                                    geojson_out=True)
 
-        var_mean_dict =  map(list_from_json, j)
+        var_mean_dict = map(list_from_json, j)
 
-        df_app = pd.DataFrame(data = var_mean_dict, columns=['county_name', 'value'])
+        df_app = pd.DataFrame(data=var_mean_dict, columns=['county_name', 'value'])
         df_app['variable'] = variable
         df_app['date'] = date
         df_app['state'] = state_from_fname(shp)
@@ -122,6 +144,7 @@ def agg_by_county(f):
 
 def make_master_df():
 
+    # add timestap
     ppt_df = map(agg_by_county, glob.glob("../mean_images/precip*"))
     ppt_df = pd.concat(ppt_df)
 
@@ -130,27 +153,42 @@ def make_master_df():
 
     return pd.concat([ppt_df, pet_df])
 
-def group_remake_df():
 
-    return()
+def detrend_data(dat):
 
+    dat_out = dat.groupby(['state', 'county_name', 'variable'])
+    dat_out = dat_out['value'].apply(lambda x: signal.detrend(x))
 
-def detrend_data():
+    return pd.DataFrame({'info': dat_out.index,
+                         'values': dat_out.values})
 
-    dat_out = make_master_df()
-    dat_out = dat_out.drop(columns=['Unnamed: 0'])
-    dat_out = dat_out.groupby(['state', 'county_name', 'variable'])
-
-    return dat_out['value'].apply(lambda x: signal.detrend(x))
+# unstack
 
 
 
 
-test = pd.read_csv("../test/pd_test.csv", sep=",")
-test.drop(columns=['Unnamed: 0'])
-test = test[test.state == 'MT']
-test.groupby(['variable', 'county_name'])
 
-print(test['value'].apply(lambda x: signal.detrend(x)))
+def get_nass_data():
 
+
+    # build dictionary with key value pairs to put into requests
+    test = 'http://quickstats.nass.usda.gov/api/get_counts/?key=41C2FA23-531A-3899-B471-871B13C2748C&commodity_desc=CORN&year__GE=2012&state_alpha=VA'#&format=CSV'
+    return requests.get(test)
+
+
+
+# test = make_master_df()
+#
+# print(detrend_data(test))
+
+# #test2 = get_nass_data()
+#
+# #print(test2.content
+# test = pd.read_csv("../test/pd_test.csv", sep=",")
+# test = test.loc[test['state'] == "MT"]
+# test = detrend_data(test)
+
+# images = glob.glob("../mean_images/precip*")
+#
+# test = [(get_mean_date(x)) for x in images]
 

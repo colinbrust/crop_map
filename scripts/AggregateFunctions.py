@@ -14,13 +14,5 @@ def daily_process(date):
     [os.remove(f) for f in glob.glob("../raw_images/*.nc")]
 
 
-print("Hello World!")
+[daily_process(str(d)) for d in DataDownload.download_latest()]
 
-
-'''
-d = datetime.date(1980, 8, 1)
-
-for i in range(13522):
-    daily_process(str(d))
-    d = d + datetime.timedelta(days=1)
-'''
