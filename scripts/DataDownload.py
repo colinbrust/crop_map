@@ -9,6 +9,7 @@ import pandas as pd
 import requests
 import datetime
 import os
+import fnmatch
 from scipy import signal
 
 
@@ -84,6 +85,8 @@ def make_sum():
         sum_images("pet")
 
 
+#### Figure out why this isn't working!!!! ####
+
 def download_latest():
 
     date_in = glob.glob("../mean_images/precip*")[-1]
@@ -146,12 +149,34 @@ def make_master_df():
 
     # add timestap
     ppt_df = map(agg_by_county, glob.glob("../mean_images/precip*"))
-    ppt_df = pd.concat(ppt_df)
+    ppt_df = pd.concat(ppt_df, ignore_index=True)
 
     pet_df = map(agg_by_county, glob.glob("../mean_images/pet*"))
-    pet_df = pd.concat(pet_df)
+    pet_df = pd.concat(pet_df, ignore_index=True)
 
-    return pd.concat([ppt_df, pet_df])
+    return pd.concat([ppt_df, pet_df], ignore_index=True)
+
+
+def update_csv():
+
+    fname = glob.glob("../data_frames/*")[0]
+    dat = pd.read_csv(fname)
+
+    add_search = lambda x: "*" + x + "*"
+    add_search = np.vectorize(add_search)
+
+    dates = dat.date.unique()[:-1]
+    dates = add_search(dates)
+
+    to_add = []
+
+    for date in dates:
+        for f in glob.glob("../mean_images/precip*"):
+            if not fnmatch.fnmatch(f, date):
+
+                to_add.append(f)
+
+    return to_add
 
 
 def detrend_data(dat):
@@ -165,30 +190,68 @@ def detrend_data(dat):
 # unstack
 
 
+def get_nass_data(crop, year, state):
+
+    if crop == "BARLEY":
+        data_item = "BARLEY - PRICE RECEIVED, MEASURED IN $ / BU"
+    elif crop == "WHEAT":
+        data_item = "WHEAT - PRICE RECEIVED, MEASURED IN $ / BU"
+    elif crop == "HAY":
+        data_item = "HAY, ALFALFA - PRICE RECEIVED, MEASURED IN $ / TON"
+
+    parameters = {"source_desc": "SURVEY",
+                  "year__LE": year,
+                  "reference_period_desc": "MARKETING YEAR",
+                  "agg_level_desc": "STATE",
+                  "state_alpha": state,
+                  "short_desc": data_item,
+                  "commodity_desc": crop,
+                  "domain_desc": "TOTAL"
+                  }
+
+    response = requests.get('http://quickstats.nass.usda.gov/api/api_GET/'
+                            '?key=41C2FA23-531A-3899-B471-871B13C2748C',
+                            params=parameters)
+
+    return response.json()['data']
 
 
+def parse_nass_data(dat):
 
-def get_nass_data():
+    state, year, crop, value = [], [], [], []
+
+    for item in dat:
+        state.append(item['state_alpha'])
+        year.append(item['year'])
+        crop.append(item['commodity_desc'])
+        value.append(item['Value'])
+
+    return pd.DataFrame(
+        {'state': state,
+         'year': year,
+         'crop': crop,
+         'value': value
+         })
 
 
-    # build dictionary with key value pairs to put into requests
-    test = 'http://quickstats.nass.usda.gov/api/get_counts/?key=41C2FA23-531A-3899-B471-871B13C2748C&commodity_desc=CORN&year__GE=2012&state_alpha=VA'#&format=CSV'
-    return requests.get(test)
+def save_all_nass():
 
+    crops = ["BARLEY", "WHEAT", "HAY"]
+    states = ["MT", "ID", "WY", "ND", "SD"]
+    year = datetime.datetime.today().year
 
+    all_data = []
 
-# test = make_master_df()
-#
-# print(detrend_data(test))
+    for state in states:
+        for crop in crops:
 
-# #test2 = get_nass_data()
-#
-# #print(test2.content
-# test = pd.read_csv("../test/pd_test.csv", sep=",")
-# test = test.loc[test['state'] == "MT"]
-# test = detrend_data(test)
+            dat = get_nass_data(crop, year, state)
+            all_data.append(dat)
 
-# images = glob.glob("../mean_images/precip*")
-#
-# test = [(get_mean_date(x)) for x in images]
+    dat_out = pd.concat(map(parse_nass_data, all_data), ignore_index=True)
+
+    out_name = "../data_frames/nass_" + str(year) + ".csv"
+
+    dat_out.to_csv(out_name)
+
 
