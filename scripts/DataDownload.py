@@ -9,10 +9,9 @@ import pandas as pd
 import requests
 import datetime
 import os
-import fnmatch
 from scipy import signal
 
-
+# given a date, this function downloads pet and precip images for the area surrounding Montana.
 def download_data(d):
 
     request_inputs = Namespace(BBoxType='vectorFile', attributes=['precip', 'pet'],
@@ -23,6 +22,7 @@ def download_data(d):
     build_request(request_inputs)
 
 
+# returns the date of the images in the "raw_images" folder.
 def get_raw_date():
 
     fname = glob.glob("../raw_images/*.nc")[0]
@@ -30,16 +30,19 @@ def get_raw_date():
     return fname.split("/")[-1].split("_")[1].replace("F", "").split("-")
 
 
+# returns the variable of an image based on filename.
 def get_var(fname):
 
     return fname.split("/")[-1].split("_")[0]
 
 
+# returns the date of a mean image.
 def get_mean_date(fname):
 
     return fname.split("/")[-1].split("_")[1].replace(".tif", "")
 
 
+# determines whether the latest daily image downloaded was from the first day of the month.
 def check_date():
 
     if get_raw_date()[2] == '01':
@@ -47,6 +50,7 @@ def check_date():
     return False
 
 
+# stacks and sums numpy arrays which are then written back out as geotiffs.
 def sum_images(variable):
 
     date_use = "-".join(get_raw_date())
@@ -69,6 +73,7 @@ def sum_images(variable):
     os.remove(del_name)
 
 
+# depending on whether or not it is the first day of the month, either copies over an image or sums it.
 def make_sum():
 
     if check_date():
@@ -85,9 +90,11 @@ def make_sum():
         sum_images("pet")
 
 
+# takes a string formatted as a date and returns a datetime.date object
 def str_to_date(date):
 
     return datetime.datetime.strptime(date, "%Y-%m-%d").date()
+
 
 # taken from stack exchange. Determines whether or not a date is the last day of the month.
 def last_day_of_month(date):
@@ -97,6 +104,7 @@ def last_day_of_month(date):
     return date.replace(month=date.month+1, day=1) - datetime.timedelta(days=1)
 
 
+# if an image is complete (has all days of the month), returns True given a filename
 def is_img_complete(f):
 
     img_date = get_mean_date(f)
@@ -107,6 +115,8 @@ def is_img_complete(f):
         return True
     return False
 
+
+# returns a list of dates from the last downloaded image to today
 def download_latest():
 
     date_in = glob.glob("../mean_images/precip*")
@@ -123,16 +133,19 @@ def download_latest():
     return [start + datetime.timedelta(days=x) for x in range(0, (end - start).days)]
 
 
+# returns the name of the state given a geojson filename.
 def state_from_fname(fname):
 
     return fname.split("/")[-1].replace(".geojson", "")
 
 
+# return a list of properties given a geojson file.
 def list_from_json(j):
 
     return [j['properties']['NAME'], j['properties']['mean']]
 
 
+# given a filename of a summed monthly image, reduce the image at state county levels.
 def agg_by_county(f):
 
     variable = get_var(f)
@@ -170,55 +183,50 @@ def agg_by_county(f):
     return df
 
 
-
-
+# updates the master dataframe csv file with newly completed monthly totals.
 def update_csv():
 
-    csv = pd.read_csv("../data_frames/master_df.csv")
+    csv = pd.read_csv("../data_frames/master_df.csv", index_col=0)
+
     ppt = csv['variable'] == 'precip'
+    ppt = csv[ppt]
+    ppt_date = ppt['date'].tolist()
+
+
     pet = csv['variable'] == 'pet'
+    pet = csv[pet]
+    pet_date = pet['date'].tolist()
 
     for f in glob.glob("../mean_images/precip*"):
 
-        ppt_df = csv[ppt]
-        img_date = get_mean_date(f)
+        if is_img_complete(f) and (get_mean_date(f) not in ppt_date):
 
-        print(img_date in pd.Series(ppt_df['date']).astype(str))
+            dat = agg_by_county(f)
+            csv = csv.append(dat)
 
-        # if is_img_complete(f) and (img_date not in pd.Series(ppt_df['date'])):
-        #     print("asdfasdf")
+    for f in glob.glob("../mean_images/pet*"):
 
+        if is_img_complete(f) and (get_mean_date(f) not in pet_date):
 
+            dat = agg_by_county(f)
+            csv = csv.append(dat, ignore_index=True)
 
-
-    return csv
-
-update_csv()
-
-
-def make_master_df():
-
-    # add timestap
-    ppt_df = map(agg_by_county, glob.glob("../mean_images/precip*"))
-    ppt_df = pd.concat(ppt_df, ignore_index=True)
-
-    pet_df = map(agg_by_county, glob.glob("../mean_images/pet*"))
-    pet_df = pd.concat(pet_df, ignore_index=True)
-
-    return pd.concat([ppt_df, pet_df], ignore_index=True)
+    csv.to_csv("../data_frames/master_df.csv", sep=",")
 
 
-def detrend_data(dat):
+# reads the master dataframe csv and detrends precip and pet data by county.
+def detrend_data():
 
+    # unstack
+    dat = pd.read_csv("../data_frames/master_df.csv", index_col=0)
     dat_out = dat.groupby(['state', 'county_name', 'variable'])
     dat_out = dat_out['value'].apply(lambda x: signal.detrend(x))
 
     return pd.DataFrame({'info': dat_out.index,
                          'values': dat_out.values})
 
-# unstack
 
-
+# returns the data from the NASS Quickstats API given a crop, year and state input.
 def get_nass_data(crop, year, state):
 
     if crop == "BARLEY":
@@ -245,6 +253,7 @@ def get_nass_data(crop, year, state):
     return response.json()['data']
 
 
+# takes the json file returned from NASS API and turns it into a pandas dataframe
 def parse_nass_data(dat):
 
     state, year, crop, value = [], [], [], []
@@ -263,6 +272,7 @@ def parse_nass_data(dat):
          })
 
 
+# creates combination of all possible NASS entries and then saves out to csv using parse_nass_data function.
 def save_all_nass():
 
     crops = ["BARLEY", "WHEAT", "HAY"]
@@ -282,5 +292,4 @@ def save_all_nass():
     out_name = "../data_frames/nass_data.csv"
 
     dat_out.to_csv(out_name)
-
 

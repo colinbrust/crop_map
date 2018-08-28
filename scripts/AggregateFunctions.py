@@ -25,7 +25,5 @@ def annual_process(date):
     return 0
 
 
-
-
 [daily_process(str(d)) for d in DataDownload.download_latest()]
 
