@@ -85,17 +85,42 @@ def make_sum():
         sum_images("pet")
 
 
-#### Figure out why this isn't working!!!! ####
+def str_to_date(date):
+
+    return datetime.datetime.strptime(date, "%Y-%m-%d").date()
+
+# taken from stack exchange. Determines whether or not a date is the last day of the month.
+def last_day_of_month(date):
+
+    if date.month == 12:
+        return date.replace(day=31)
+    return date.replace(month=date.month+1, day=1) - datetime.timedelta(days=1)
+
+
+def is_img_complete(f):
+
+    img_date = get_mean_date(f)
+    img_date = datetime.datetime.strptime(img_date, "%Y-%m-%d").date()
+    fin_date = last_day_of_month(img_date)
+
+    if img_date == fin_date:
+        return True
+    return False
 
 def download_latest():
 
-    date_in = glob.glob("../mean_images/precip*")[-1]
-    date_in = get_mean_date(date_in)
-    date_in = datetime.datetime.strptime(date_in, "%Y-%m-%d") + datetime.timedelta(days=1)
+    date_in = glob.glob("../mean_images/precip*")
+    start = []
+
+    for date in date_in:
+        start.append(date.split("/")[-1].split("_")[-1].replace(".tif", ""))
+
+    start = max(map(str_to_date, start)) + datetime.timedelta(days=1)
 
     end = datetime.datetime.today() - datetime.timedelta(days=1)
-    return [date_in.date() + datetime.timedelta(days=x) for x in range(0, (end - date_in).days)]
+    end = end.date()
 
+    return [start + datetime.timedelta(days=x) for x in range(0, (end - start).days)]
 
 
 def state_from_fname(fname):
@@ -145,6 +170,32 @@ def agg_by_county(f):
     return df
 
 
+
+
+def update_csv():
+
+    csv = pd.read_csv("../data_frames/master_df.csv")
+    ppt = csv['variable'] == 'precip'
+    pet = csv['variable'] == 'pet'
+
+    for f in glob.glob("../mean_images/precip*"):
+
+        ppt_df = csv[ppt]
+        img_date = get_mean_date(f)
+
+        print(img_date in pd.Series(ppt_df['date']).astype(str))
+
+        # if is_img_complete(f) and (img_date not in pd.Series(ppt_df['date'])):
+        #     print("asdfasdf")
+
+
+
+
+    return csv
+
+update_csv()
+
+
 def make_master_df():
 
     # add timestap
@@ -155,28 +206,6 @@ def make_master_df():
     pet_df = pd.concat(pet_df, ignore_index=True)
 
     return pd.concat([ppt_df, pet_df], ignore_index=True)
-
-
-def update_csv():
-
-    fname = glob.glob("../data_frames/*")[0]
-    dat = pd.read_csv(fname)
-
-    add_search = lambda x: "*" + x + "*"
-    add_search = np.vectorize(add_search)
-
-    dates = dat.date.unique()[:-1]
-    dates = add_search(dates)
-
-    to_add = []
-
-    for date in dates:
-        for f in glob.glob("../mean_images/precip*"):
-            if not fnmatch.fnmatch(f, date):
-
-                to_add.append(f)
-
-    return to_add
 
 
 def detrend_data(dat):
@@ -250,7 +279,7 @@ def save_all_nass():
 
     dat_out = pd.concat(map(parse_nass_data, all_data), ignore_index=True)
 
-    out_name = "../data_frames/nass_" + str(year) + ".csv"
+    out_name = "../data_frames/nass_data.csv"
 
     dat_out.to_csv(out_name)
 
