@@ -15,15 +15,18 @@ def daily_process(date):
     [os.remove(f) for f in glob.glob("../raw_images/*.nc")]
 
 
-def monthly_process(date):
+def monthly_process():
 
-    return 0
+    if datetime.datetime.today().day == 04:
 
-
-def annual_process(date):
-
-    return 0
+        DataDownload.save_all_nass()
+        DataDownload.update_csv()
 
 
 [daily_process(str(d)) for d in DataDownload.download_latest()]
+
+
+
+
+
 

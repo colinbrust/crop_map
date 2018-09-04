@@ -10,6 +10,8 @@ import requests
 import datetime
 import os
 from scipy import signal
+#from standard_precip.spi import SPI
+
 
 # given a date, this function downloads pet and precip images for the area surrounding Montana.
 def download_data(d):
@@ -203,6 +205,7 @@ def update_csv():
 
             dat = agg_by_county(f)
             csv = csv.append(dat)
+            print(f)
 
     for f in glob.glob("../mean_images/pet*"):
 
@@ -210,6 +213,7 @@ def update_csv():
 
             dat = agg_by_county(f)
             csv = csv.append(dat, ignore_index=True)
+            print(f)
 
     csv.to_csv("../data_frames/master_df.csv", sep=",")
 
@@ -217,13 +221,70 @@ def update_csv():
 # reads the master dataframe csv and detrends precip and pet data by county.
 def detrend_data():
 
-    # unstack
     dat = pd.read_csv("../data_frames/master_df.csv", index_col=0)
-    dat_out = dat.groupby(['state', 'county_name', 'variable'])
-    dat_out = dat_out['value'].apply(lambda x: signal.detrend(x))
+    dat = dat[dat.state.notnull()]
+    dat['date'] = pd.to_datetime(dat['date'], format='%Y-%m-%d')
+    dat = dat.sort_values(by=['date'])
+    dat = dat.groupby(['state', 'county_name', 'variable'])
+
+    dat_out = dat['value'].apply(lambda x: signal.detrend(x))
 
     return pd.DataFrame({'info': dat_out.index,
                          'values': dat_out.values})
+
+
+def get_date_range():
+
+    dat = pd.read_csv("../data_frames/master_df.csv", index_col=0)
+    dat = dat[dat.state.notnull()]
+    dat['date'] = pd.to_datetime(dat['date'], format='%Y-%m-%d')
+    dat = dat.sort_values(by=['date'])
+
+    dates = dat['date'].unique()
+
+    start = datetime.datetime.utcfromtimestamp(dates[0].tolist()/1e9).date()
+    end = datetime.datetime.utcfromtimestamp(dates[-1].tolist()/1e9).date()
+
+    # taken from stack exchange: https://stackoverflow.com/questions/34898525/generate-list-of-months-between-interval-in-python
+    daterange = pd.date_range(str(start), str(end), freq='1M')
+    daterange = [d.strftime('%Y-%m') for d in daterange]
+
+    return daterange
+
+# ASK ABOUT WINDOW TYPE
+# function that calculates SPI
+def calc_spi(dat, start_mo, win):
+
+    spi = SPI()
+    spi.set_rolling_window_params(
+        span=win,
+        window_type='boxcar',
+        center=True
+    )
+
+    spi.set_distribution_params(dist_type='gam')
+
+    return spi.calculate(dat, starting_month=start_mo)
+
+
+def apply_all_spi():
+
+    dat = detrend_data().values[0]
+
+    state = dat[0][0]
+    county = dat[0][1].lower().replace(" ", "-")
+    variable = dat[0][2]
+
+    months = get_date_range()
+    win_sizes = range(1, 16)
+
+    # for mon in months:
+    #     for win in win_sizes:
+    #         start = int(mon.split("-")[-1])
+    #         print(calc_spi(dat, start, win))
+
+
+
 
 
 # returns the data from the NASS Quickstats API given a crop, year and state input.
@@ -293,3 +354,5 @@ def save_all_nass():
 
     dat_out.to_csv(out_name)
 
+
+print(detrend_data())
