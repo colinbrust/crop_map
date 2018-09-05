@@ -9,6 +9,7 @@ import pandas as pd
 import requests
 import datetime
 import os
+import subprocess
 from scipy import signal
 #from standard_precip.spi import SPI
 
@@ -250,42 +251,46 @@ def get_date_range():
     daterange = [d.strftime('%Y-%m') for d in daterange]
 
     return daterange
+#
+# # ASK ABOUT WINDOW TYPE
+# # function that calculates SPI
+# def calc_spi(dat, start_mo, win):
+#
+#     spi = SPI()
+#     spi.set_rolling_window_params(
+#         span=win,
+#         window_type='boxcar',
+#         center=True
+#     )
+#
+#     spi.set_distribution_params(dist_type='gam')
+#
+#     return spi.calculate(dat, starting_month=start_mo)
+#
+#
+# def apply_all_spi():
+#
+#     dat = detrend_data().values[0]
+#
+#     state = dat[0][0]
+#     county = dat[0][1].lower().replace(" ", "-")
+#     variable = dat[0][2]
+#
+#     months = get_date_range()
+#     win_sizes = range(1, 16)
+#
+#     # for mon in months:
+#     #     for win in win_sizes:
+#     #         start = int(mon.split("-")[-1])
+#     #         print(calc_spi(dat, start, win))
+#
 
-# ASK ABOUT WINDOW TYPE
-# function that calculates SPI
-def calc_spi(dat, start_mo, win):
+# R script that calculates SPI and saves out a csv.
+# The SPI package for python only works on python 3
+def run_r_spi():
 
-    spi = SPI()
-    spi.set_rolling_window_params(
-        span=win,
-        window_type='boxcar',
-        center=True
-    )
-
-    spi.set_distribution_params(dist_type='gam')
-
-    return spi.calculate(dat, starting_month=start_mo)
-
-
-def apply_all_spi():
-
-    dat = detrend_data().values[0]
-
-    state = dat[0][0]
-    county = dat[0][1].lower().replace(" ", "-")
-    variable = dat[0][2]
-
-    months = get_date_range()
-    win_sizes = range(1, 16)
-
-    # for mon in months:
-    #     for win in win_sizes:
-    #         start = int(mon.split("-")[-1])
-    #         print(calc_spi(dat, start, win))
-
-
-
-
+    subprocess.call("/usr/local/bin/Rscript --vanilla ../R/calc_spi.r", shell=True)
+    # for ssh: subprocess.call("/usr/bin/Rscript --vanilla ../R/calc_spi.r", shell=True)
 
 # returns the data from the NASS Quickstats API given a crop, year and state input.
 def get_nass_data(crop, year, state):
@@ -355,4 +360,20 @@ def save_all_nass():
     dat_out.to_csv(out_name)
 
 
-print(detrend_data())
+def get_best_coef(crop, state, variable, coef, county, month):
+
+    dat = pd.read_csv("../data_frames/coeffs/%s_%s_%s_Allcoeffs_ML.csv" % (crop, state, variable),
+                      index_col=0)
+
+    dat = dat.filter(regex=coef)
+    dat = dat.filter(regex="_month" + str(month) + "_")
+    dat = dat.filter(regex="^" + county + "$", axis=0).T
+
+    lag = int(dat.idxmax().values[0].split("_")[-1].replace("lag", ""))
+    value = dat.max().values[0]
+
+    return [lag, value]
+
+
+run_r_spi()
+
