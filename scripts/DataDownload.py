@@ -233,7 +233,7 @@ def detrend_data():
     return pd.DataFrame({'info': dat_out.index,
                          'values': dat_out.values})
 
-
+# not sure if this is necessary. Returns a range of dates.
 def get_date_range():
 
     dat = pd.read_csv("../data_frames/master_df.csv", index_col=0)
@@ -360,6 +360,7 @@ def save_all_nass():
     dat_out.to_csv(out_name)
 
 
+# Returns the coefficient value and optimal lag time based on inputs
 def get_best_coef(crop, state, variable, coef, county, month):
 
     dat = pd.read_csv("../data_frames/coeffs/%s_%s_%s_Allcoeffs_ML.csv" % (crop, state, variable),
@@ -375,5 +376,20 @@ def get_best_coef(crop, state, variable, coef, county, month):
     return [lag, value]
 
 
-run_r_spi()
+# returns the spi for a county based on optimal lag period.
+def get_matching_spi(state, county, lag, yyyymm):
+
+    dat = pd.read_csv("../data_frames/spi_out.csv")
+
+    dat = dat[(dat['state'] == state) &
+              (dat['county_name'] == county) &
+              (dat['window'] == lag) &
+              (dat['date'] == yyyymm)]
+
+    return dat.spi.values[0]
+
+
+test = get_matching_spi("ID", "ada", 5, "1999-02")
+
+print(test)
 
