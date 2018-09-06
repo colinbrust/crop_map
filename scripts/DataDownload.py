@@ -367,39 +367,50 @@ def get_best_coef(crop, state, variable, county, month):
     # I am finding lowest RMSE and then selecting corresponding values. Make sure this is correct.
     dat1 = pd.read_csv("../data_frames/coeffs/%s_%s_%s_Allcoeffs_ML.csv" % (crop, state, variable),
                       index_col=0)
-    dat1 = dat1.filter(regex="_month" + str(month) + "_")
-    dat1 = dat1.filter(regex="^" + county + "$", axis=0)
 
-    dat = dat1.filter(regex="rmse").T
+    if county not in dat1.index:
 
-    lag = dat.idxmin().values[0].split("_")[-1].replace("lag", "")
+        return {"alpha": np.nan,
+                "beta": np.nan,
+                "gamma": np.nan,
+                "lag": np.nan}
 
-    alpha = dat1.filter(regex='alpha').filter(regex="_lag" + lag + "$").T.values[0][0]
-    beta  = dat1.filter(regex='beta').filter(regex="_lag" + lag + "$").T.values[0][0]
-    gamma = dat1.filter(regex='gamma').filter(regex="_lag" + lag + "$").T.values[0][0]
+    else:
 
-    return {"alpha": alpha,
-            "beta": beta,
-            "gamma": gamma,
-            "lag": int(lag)}
+        dat1 = dat1.filter(regex="_month" + str(month) + "_")
+        dat1 = dat1.filter(regex="^" + county + "$", axis=0)
+
+        dat = dat1.filter(regex="rmse").T
+
+        lag = dat.idxmin().values[0].split("_")[-1].replace("lag", "")
+
+        alpha = dat1.filter(regex='alpha').filter(regex="_lag" + lag + "$").T.values[0][0]
+        beta = dat1.filter(regex='beta').filter(regex="_lag" + lag + "$").T.values[0][0]
+        gamma = dat1.filter(regex='gamma').filter(regex="_lag" + lag + "$").T.values[0][0]
+
+        return {"alpha": alpha,
+                "beta": beta,
+                "gamma": gamma,
+                "lag": int(lag)}
 
 
 # returns the spi for a county based on optimal lag period.
-def get_matching_spi(state, county, lag, yyyymm):
+def get_matching_spi(dat, state, county, lag, yyyymm):
 
-    dat = pd.read_csv("../data_frames/spi_out.csv")
+    if (county not in dat['county_name'].values) or np.isnan(lag):
+        return np.nan
 
-    dat = dat[(dat['state'] == state) &
-              (dat['county_name'] == county) &
-              (dat['window'] == lag) &
-              (dat['date'] == yyyymm)]
+    else:
+        dat = dat[(dat['state'] == state) &
+                  (dat['county_name'] == county) &
+                  (dat['window'] == lag) &
+                  (dat['date'] == yyyymm)]
 
-    return dat.spi.values[0]
+        return dat.spi.values[0]
 
 # returns a scvi for a given crop, year and state
-def get_corresponding_nass(crop, year, state):
+def get_corresponding_nass(dat, crop, year, state):
 
-    dat = pd.read_csv("../data_frames/nass_data.csv", index_col=0)
     dat = dat[(dat['state'] == state) &
               (dat['crop'] == crop) &
               (dat['year'] == year)]
@@ -408,6 +419,9 @@ def get_corresponding_nass(crop, year, state):
 
 
 def calc_county_scpi(yyyymm, crop):
+
+    dat_spi = pd.read_csv("../data_frames/spi_out.csv")
+    dat_nass = pd.read_csv("../data_frames/nass_data.csv", index_col=0)
 
     year = yyyymm.split("-")[0]
     month = yyyymm.split("-")[1]
@@ -436,20 +450,48 @@ def calc_county_scpi(yyyymm, crop):
         # just calculating from spi for the time being.
         for feat in data['features']:
 
-            name = feat['properties']['NAME'].lower().replace(" ", "_")
+            name = feat['properties']['NAME'].lower().replace(" ", "_").replace("&", "and")
+
+            add_name = state + "_" + name
             coeffs = get_best_coef(crop=short, state=state, variable='spi',
                                    county=name, month=int(month))
 
-            spi = get_matching_spi(state=state, county=name,
+            spi = get_matching_spi(dat=dat_spi, state=state, county=name,
                                    lag=coeffs['lag'], yyyymm=yyyymm)
 
-            scvi = get_corresponding_nass(crop=crop, year=int(year), state=state)
+            scvi = get_corresponding_nass(dat=dat_nass, crop=crop, year=int(year), state=state)
 
-            print(name, spi, scvi)
+            if np.isnan(spi):
+
+                new_dict = {'alpha': np.nan,
+                            'beta': np.nan,
+                            'gamma': np.nan,
+                            'spi': np.nan,
+                            'scvi': np.nan,
+                            'scpi': np.nan}
+
+                out_dict[add_name] = new_dict
+
+            else:
+
+                scpi = coeffs['alpha']*spi + coeffs['beta']*scvi + coeffs['gamma']
+                new_dict = {'alpha': coeffs['alpha'],
+                            'beta': coeffs['beta'],
+                            'gamma': coeffs['gamma'],
+                            'spi': spi,
+                            'scvi': scvi,
+                            'scpi': scpi}
+
+                out_dict[add_name] = new_dict
+
+    return out_dict
 
 
-
-
-
+import time
+start = time.time()
 test = calc_county_scpi("2000-01", "HAY")
+end = time.time()
+
+print(end-start)
+
 

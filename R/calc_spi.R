@@ -60,7 +60,8 @@ calc_spi <- function(win) {
     dplyr::mutate(
       county_name = county_name %>%
         tolower() %>%
-        stringr::str_replace(" ", "_"),
+        stringr::str_replace("&", "and") %>% 
+        stringr::str_replace_all(" ", "_"),
       date = format(as.Date(date, "%Y-%m-%d"), "%Y-%m")
     )
 }
