@@ -11,6 +11,7 @@ import datetime
 import os
 import subprocess
 from scipy import signal
+import json
 #from standard_precip.spi import SPI
 
 
@@ -361,19 +362,26 @@ def save_all_nass():
 
 
 # Returns the coefficient value and optimal lag time based on inputs
-def get_best_coef(crop, state, variable, coef, county, month):
+def get_best_coef(crop, state, variable, county, month):
 
-    dat = pd.read_csv("../data_frames/coeffs/%s_%s_%s_Allcoeffs_ML.csv" % (crop, state, variable),
+    # I am finding lowest RMSE and then selecting corresponding values. Make sure this is correct.
+    dat1 = pd.read_csv("../data_frames/coeffs/%s_%s_%s_Allcoeffs_ML.csv" % (crop, state, variable),
                       index_col=0)
+    dat1 = dat1.filter(regex="_month" + str(month) + "_")
+    dat1 = dat1.filter(regex="^" + county + "$", axis=0)
 
-    dat = dat.filter(regex=coef)
-    dat = dat.filter(regex="_month" + str(month) + "_")
-    dat = dat.filter(regex="^" + county + "$", axis=0).T
+    dat = dat1.filter(regex="rmse").T
 
-    lag = int(dat.idxmax().values[0].split("_")[-1].replace("lag", ""))
-    value = dat.max().values[0]
+    lag = dat.idxmin().values[0].split("_")[-1].replace("lag", "")
 
-    return [lag, value]
+    alpha = dat1.filter(regex='alpha').filter(regex="_lag" + lag + "$").T.values[0][0]
+    beta  = dat1.filter(regex='beta').filter(regex="_lag" + lag + "$").T.values[0][0]
+    gamma = dat1.filter(regex='gamma').filter(regex="_lag" + lag + "$").T.values[0][0]
+
+    return {"alpha": alpha,
+            "beta": beta,
+            "gamma": gamma,
+            "lag": int(lag)}
 
 
 # returns the spi for a county based on optimal lag period.
@@ -388,8 +396,60 @@ def get_matching_spi(state, county, lag, yyyymm):
 
     return dat.spi.values[0]
 
+# returns a scvi for a given crop, year and state
+def get_corresponding_nass(crop, year, state):
 
-test = get_matching_spi("ID", "ada", 5, "1999-02")
+    dat = pd.read_csv("../data_frames/nass_data.csv", index_col=0)
+    dat = dat[(dat['state'] == state) &
+              (dat['crop'] == crop) &
+              (dat['year'] == year)]
 
-print(test)
+    return dat.value.values[0]
+
+
+def calc_county_scpi(yyyymm, crop):
+
+    year = yyyymm.split("-")[0]
+    month = yyyymm.split("-")[1]
+
+    boundaries = ["../boundaries/state_boundaries/MT.geojson",
+                  "../boundaries/state_boundaries/ID.geojson",
+                  "../boundaries/state_boundaries/ND.geojson",
+                  "../boundaries/state_boundaries/SD.geojson",
+                  "../boundaries/state_boundaries/WY.geojson"]
+
+    if crop == "BARLEY":
+        short = "bar"
+    elif crop == "WHEAT":
+        short = "whe"
+    elif crop == "HAY":
+        short = "alf"
+    out_dict = {}
+
+    for bnd in boundaries:
+
+        state = bnd.split("/")[-1].replace(".geojson", "")
+
+        with open(bnd) as shp:
+            data = json.load(shp)
+
+        # just calculating from spi for the time being.
+        for feat in data['features']:
+
+            name = feat['properties']['NAME'].lower().replace(" ", "_")
+            coeffs = get_best_coef(crop=short, state=state, variable='spi',
+                                   county=name, month=int(month))
+
+            spi = get_matching_spi(state=state, county=name,
+                                   lag=coeffs['lag'], yyyymm=yyyymm)
+
+            scvi = get_corresponding_nass(crop=crop, year=int(year), state=state)
+
+            print(name, spi, scvi)
+
+
+
+
+
+test = calc_county_scpi("2000-01", "HAY")
 
