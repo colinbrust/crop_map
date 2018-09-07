@@ -1,17 +1,17 @@
-# install all necessary packages
-
-get_packages <- function(x) {
-  if (!require(x, character.only = T)) {
-    install.packages(x)
-    library(x, character.only = T)
-  } else {
-    library(x, character.only = T)
-  }
-}
-
-packages <- c("SPEI", "tidyverse", "pracma", "lubridate")
-for (pak in packages) get_packages(pak)
-
+# # install all necessary packages
+# 
+# get_packages <- function(x) {
+#   if (!require(x, character.only = T)) {
+#     install.packages(x)
+#     library(x, character.only = T)
+#   } else {
+#     library(x, character.only = T)
+#   }
+# }
+# 
+# packages <- c("SPEI", "dplyr", "readr", "tidyr", "pracma", "lubridate")
+# for (pak in packages) get_packages(pak)
+library(magrittr)
 reorder_data <- function(dat, win) {
 
   ### Ask about gamma and Inf values ###

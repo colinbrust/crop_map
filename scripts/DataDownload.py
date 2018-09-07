@@ -206,7 +206,7 @@ def update_csv():
         if is_img_complete(f) and (get_mean_date(f) not in ppt_date):
 
             dat = agg_by_county(f)
-            csv = csv.append(dat)
+            csv = csv.append(dat, ignore_index=True)
             print(f)
 
     for f in glob.glob("../mean_images/pet*"):
@@ -290,8 +290,7 @@ def get_date_range():
 # The SPI package for python only works on python 3
 def run_r_spi():
 
-    subprocess.call("/usr/local/bin/Rscript --vanilla ../R/calc_spi.r", shell=True)
-    # for ssh: subprocess.call("/usr/bin/Rscript --vanilla ../R/calc_spi.r", shell=True)
+    subprocess.call("/usr/bin/Rscript --vanilla ../R/calc_spi.r", shell=True)
 
 # returns the data from the NASS Quickstats API given a crop, year and state input.
 def get_nass_data(crop, year, state):
@@ -415,7 +414,10 @@ def get_corresponding_nass(dat, crop, year, state):
               (dat['crop'] == crop) &
               (dat['year'] == year)]
 
-    return dat.value.values[0]
+    if dat.empty:
+        return np.nan
+    else:
+        return dat.value.values[0]
 
 
 def calc_county_scpi(yyyymm, crop):
@@ -463,7 +465,11 @@ def calc_county_scpi(yyyymm, crop):
 
             if np.isnan(spi):
 
-                new_dict = {'alpha': np.nan,
+                new_dict = {'state': state,
+                            'county': name,
+                            'date': yyyymm,
+                            'crop': crop,
+                            'alpha': np.nan,
                             'beta': np.nan,
                             'gamma': np.nan,
                             'spi': np.nan,
@@ -475,7 +481,12 @@ def calc_county_scpi(yyyymm, crop):
             else:
 
                 scpi = coeffs['alpha']*spi + coeffs['beta']*scvi + coeffs['gamma']
-                new_dict = {'alpha': coeffs['alpha'],
+
+                new_dict = {'state': state,
+                            'county': name,
+                            'date': yyyymm,
+                            'crop': crop,
+                            'alpha': coeffs['alpha'],
                             'beta': coeffs['beta'],
                             'gamma': coeffs['gamma'],
                             'spi': spi,
@@ -484,14 +495,28 @@ def calc_county_scpi(yyyymm, crop):
 
                 out_dict[add_name] = new_dict
 
-    return out_dict
+    return pd.DataFrame.from_dict(out_dict, orient='index')
 
 
-import time
-start = time.time()
-test = calc_county_scpi("2000-01", "HAY")
-end = time.time()
+def update_scpi_csv():
 
-print(end-start)
+    for_dates = pd.read_csv("../data_frames/spi_out.csv")
+
+    crops = ['BARLEY', 'WHEAT', 'HAY']
+    all_dates = for_dates.date.unique()
+
+    dat = pd.read_csv("../data_frames/master_scpi.csv", index_col=0)
+
+    for yyyymm in all_dates:
+
+        for crop in crops:
+
+            if yyyymm not in dat.date.unique():
+
+                print(dat)
+                dat = dat.append(calc_county_scpi(yyyymm=yyyymm, crop=crop))
+
+    dat.to_csv("../data_frames/master_scpi.csv")
 
 
+update_scpi_csv()

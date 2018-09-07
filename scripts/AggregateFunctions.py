@@ -21,6 +21,8 @@ def monthly_process():
 
         DataDownload.save_all_nass()
         DataDownload.update_csv()
+        DataDownload.run_r_spi()
+
 
 
 [daily_process(str(d)) for d in DataDownload.download_latest()]
