@@ -29,7 +29,7 @@ reorder_data <- function(dat, win) {
         frequency = 12
       )
     } %>%
-    SPEI::spi(scale = win, distribution = "log-Logistic") %>%
+    SPEI::spi(scale = win, distribution = "PearsonIII") %>%
     {
       .$fitted
     } %>%

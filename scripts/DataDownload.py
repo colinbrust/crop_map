@@ -234,6 +234,7 @@ def detrend_data():
     return pd.DataFrame({'info': dat_out.index,
                          'values': dat_out.values})
 
+
 # not sure if this is necessary. Returns a range of dates.
 def get_date_range():
 
@@ -247,7 +248,8 @@ def get_date_range():
     start = datetime.datetime.utcfromtimestamp(dates[0].tolist()/1e9).date()
     end = datetime.datetime.utcfromtimestamp(dates[-1].tolist()/1e9).date()
 
-    # taken from stack exchange: https://stackoverflow.com/questions/34898525/generate-list-of-months-between-interval-in-python
+    # taken from stack exchange: https://stackoverflow.com/questions/34898525/generate-list-of-months-between-
+    # interval-in-python
     daterange = pd.date_range(str(start), str(end), freq='1M')
     daterange = [d.strftime('%Y-%m') for d in daterange]
 
@@ -420,10 +422,7 @@ def get_corresponding_nass(dat, crop, year, state):
         return dat.value.values[0]
 
 
-def calc_county_scpi(yyyymm, crop):
-
-    dat_spi = pd.read_csv("../data_frames/spi_out.csv")
-    dat_nass = pd.read_csv("../data_frames/nass_data.csv", index_col=0)
+def calc_county_scpi(dat_spi, dat_nass, yyyymm, crop):
 
     year = yyyymm.split("-")[0]
     month = yyyymm.split("-")[1]
@@ -482,6 +481,8 @@ def calc_county_scpi(yyyymm, crop):
 
                 scpi = coeffs['alpha']*spi + coeffs['beta']*scvi + coeffs['gamma']
 
+                # also get the RMSE
+
                 new_dict = {'state': state,
                             'county': name,
                             'date': yyyymm,
@@ -500,10 +501,11 @@ def calc_county_scpi(yyyymm, crop):
 
 def update_scpi_csv():
 
-    for_dates = pd.read_csv("../data_frames/spi_out.csv")
+    dat_spi = pd.read_csv("../data_frames/spi_out.csv")
+    dat_nass = pd.read_csv("../data_frames/nass_data.csv", index_col=0)
 
     crops = ['BARLEY', 'WHEAT', 'HAY']
-    all_dates = for_dates.date.unique()
+    all_dates = dat_spi.date.unique()
 
     dat = pd.read_csv("../data_frames/master_scpi.csv", index_col=0)
 
@@ -514,7 +516,9 @@ def update_scpi_csv():
             if yyyymm not in dat.date.unique():
 
                 print(dat)
-                dat = dat.append(calc_county_scpi(yyyymm=yyyymm, crop=crop))
+                dat = dat.append(calc_county_scpi(dat_nass=dat_nass, dat_spi=dat_spi,
+                                                  yyyymm=yyyymm, crop=crop))
+
 
     dat.to_csv("../data_frames/master_scpi.csv")
 
