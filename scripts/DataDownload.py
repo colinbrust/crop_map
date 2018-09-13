@@ -234,65 +234,18 @@ def detrend_data():
     return pd.DataFrame({'info': dat_out.index,
                          'values': dat_out.values})
 
-
-# not sure if this is necessary. Returns a range of dates.
-def get_date_range():
-
-    dat = pd.read_csv("../data_frames/master_df.csv", index_col=0)
-    dat = dat[dat.state.notnull()]
-    dat['date'] = pd.to_datetime(dat['date'], format='%Y-%m-%d')
-    dat = dat.sort_values(by=['date'])
-
-    dates = dat['date'].unique()
-
-    start = datetime.datetime.utcfromtimestamp(dates[0].tolist()/1e9).date()
-    end = datetime.datetime.utcfromtimestamp(dates[-1].tolist()/1e9).date()
-
-    # taken from stack exchange: https://stackoverflow.com/questions/34898525/generate-list-of-months-between-
-    # interval-in-python
-    daterange = pd.date_range(str(start), str(end), freq='1M')
-    daterange = [d.strftime('%Y-%m') for d in daterange]
-
-    return daterange
-#
-# # ASK ABOUT WINDOW TYPE
-# # function that calculates SPI
-# def calc_spi(dat, start_mo, win):
-#
-#     spi = SPI()
-#     spi.set_rolling_window_params(
-#         span=win,
-#         window_type='boxcar',
-#         center=True
-#     )
-#
-#     spi.set_distribution_params(dist_type='gam')
-#
-#     return spi.calculate(dat, starting_month=start_mo)
-#
-#
-# def apply_all_spi():
-#
-#     dat = detrend_data().values[0]
-#
-#     state = dat[0][0]
-#     county = dat[0][1].lower().replace(" ", "-")
-#     variable = dat[0][2]
-#
-#     months = get_date_range()
-#     win_sizes = range(1, 16)
-#
-#     # for mon in months:
-#     #     for win in win_sizes:
-#     #         start = int(mon.split("-")[-1])
-#     #         print(calc_spi(dat, start, win))
-#
-
 # R script that calculates SPI and saves out a csv.
 # The SPI package for python only works on python 3
 def run_r_spi():
 
-    subprocess.call("/usr/bin/Rscript --vanilla ../R/calc_spi.r", shell=True)
+    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/calc_spi.R"])
+
+
+# Detrends and passes scvi values through spi function in R.
+def run_r_scvi():
+
+    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/detrend_standard_scvi.R"])
+
 
 # returns the data from the NASS Quickstats API given a crop, year and state input.
 def get_nass_data(crop, year, state):
@@ -361,39 +314,30 @@ def save_all_nass():
 
     dat_out.to_csv(out_name)
 
+def calc_scpi(stat):
 
-# Returns the coefficient value and optimal lag time based on inputs
-def get_best_coef(crop, state, variable, county, month):
+    # data frames containing all necessary data.
+    dat_spi = pd.read_csv("../data_frames/spi_out.csv")
+    dat_nass = pd.read_csv("../data_frames/scvi_detrended.csv")
+    dat_coeff = pd.read_csv("../data_frames/best_month_coeffs.csv")
+    dat_coeff = dat_coeff[dat_coeff['stat'] == stat]
+    dat_coeff = dat_coeff.rename(index=str, columns={"lag": "window"})
 
-    # I am finding lowest RMSE and then selecting corresponding values. Make sure this is correct.
-    dat1 = pd.read_csv("../data_frames/coeffs/%s_%s_%s_Allcoeffs_ML.csv" % (crop, state, variable),
-                      index_col=0)
+    dat = pd.merge(dat_spi, dat_nass, how='left',
+                   left_on=['state', 'year'],
+                   right_on=['state', 'year'])
 
-    if county not in dat1.index:
+    dat = pd.merge(dat, dat_coeff, how='right',
+                   left_on=['state', 'month', 'window', 'county', 'crop'],
+                   right_on=['state', 'month', 'window', 'county', 'crop'])
 
-        return {"alpha": np.nan,
-                "beta": np.nan,
-                "gamma": np.nan,
-                "lag": np.nan}
+    dat = dat.assign(scpi=(dat.alpha*dat.spi) + (dat.beta*dat.scvi) + dat.gamma)
 
-    else:
+    dat.to_csv("../data_frames/master_scpi.csv")
 
-        dat1 = dat1.filter(regex="_month" + str(month) + "_")
-        dat1 = dat1.filter(regex="^" + county + "$", axis=0)
 
-        dat = dat1.filter(regex="rmse").T
 
-        lag = dat.idxmin().values[0].split("_")[-1].replace("lag", "")
-
-        alpha = dat1.filter(regex='alpha').filter(regex="_lag" + lag + "$").T.values[0][0]
-        beta = dat1.filter(regex='beta').filter(regex="_lag" + lag + "$").T.values[0][0]
-        gamma = dat1.filter(regex='gamma').filter(regex="_lag" + lag + "$").T.values[0][0]
-
-        return {"alpha": alpha,
-                "beta": beta,
-                "gamma": gamma,
-                "lag": int(lag)}
-
+"""
 
 # returns the spi for a county based on optimal lag period.
 def get_matching_spi(dat, state, county, lag, yyyymm):
@@ -408,6 +352,7 @@ def get_matching_spi(dat, state, county, lag, yyyymm):
                   (dat['date'] == yyyymm)]
 
         return dat.spi.values[0]
+
 
 # returns a scvi for a given crop, year and state
 def get_corresponding_nass(dat, crop, year, state):
@@ -502,7 +447,7 @@ def calc_county_scpi(dat_spi, dat_nass, yyyymm, crop):
 def update_scpi_csv():
 
     dat_spi = pd.read_csv("../data_frames/spi_out.csv")
-    dat_nass = pd.read_csv("../data_frames/nass_data.csv", index_col=0)
+    dat_nass = pd.read_csv("../data_frames/.csv", index_col=0)
 
     crops = ['BARLEY', 'WHEAT', 'HAY']
     all_dates = dat_spi.date.unique()
@@ -519,8 +464,89 @@ def update_scpi_csv():
                 dat = dat.append(calc_county_scpi(dat_nass=dat_nass, dat_spi=dat_spi,
                                                   yyyymm=yyyymm, crop=crop))
 
-
     dat.to_csv("../data_frames/master_scpi.csv")
 
+# not sure if this is necessary. Returns a range of dates.
+def get_date_range():
 
-update_scpi_csv()
+    dat = pd.read_csv("../data_frames/master_df.csv", index_col=0)
+    dat = dat[dat.state.notnull()]
+    dat['date'] = pd.to_datetime(dat['date'], format='%Y-%m-%d')
+    dat = dat.sort_values(by=['date'])
+
+    dates = dat['date'].unique()
+
+    start = datetime.datetime.utcfromtimestamp(dates[0].tolist()/1e9).date()
+    end = datetime.datetime.utcfromtimestamp(dates[-1].tolist()/1e9).date()
+
+    # taken from stack exchange: https://stackoverflow.com/questions/34898525/generate-list-of-months-between-
+    # interval-in-python
+    daterange = pd.date_range(str(start), str(end), freq='1M')
+    daterange = [d.strftime('%Y-%m') for d in daterange]
+
+    return daterange
+
+# ASK ABOUT WINDOW TYPE
+# function that calculates SPI
+def calc_spi(dat, start_mo, win):
+
+    spi = SPI()
+    spi.set_rolling_window_params(
+        span=win,
+        window_type='boxcar',
+        center=True
+    )
+
+    spi.set_distribution_params(dist_type='gam')
+
+    return spi.calculate(dat, starting_month=start_mo)
+
+
+def apply_all_spi():
+
+    dat = detrend_data().values[0]
+
+    state = dat[0][0]
+    county = dat[0][1].lower().replace(" ", "-")
+    variable = dat[0][2]
+
+    months = get_date_range()
+    win_sizes = range(1, 16)
+
+    # for mon in months:
+    #     for win in win_sizes:
+    #         start = int(mon.split("-")[-1])
+    #         print(calc_spi(dat, start, win))
+
+Returns the coefficient value and optimal lag time based on inputs
+def get_best_coef(crop, state, variable, county, month):
+
+    # I am finding lowest RMSE and then selecting corresponding values. Make sure this is correct.
+    dat1 = pd.read_csv("../data_frames/coeffs/%s_%s_%s_Allcoeffs_ML.csv" % (crop, state, variable),
+                      index_col=0)
+
+    if county not in dat1.index:
+
+        return {"alpha": np.nan,
+                "beta": np.nan,
+                "gamma": np.nan,
+                "lag": np.nan}
+
+    else:
+
+        dat1 = dat1.filter(regex="_month" + str(month) + "_")
+        dat1 = dat1.filter(regex="^" + county + "$", axis=0)
+
+        dat = dat1.filter(regex="rmse").T
+
+        lag = dat.idxmin().values[0].split("_")[-1].replace("lag", "")
+
+        alpha = dat1.filter(regex='alpha').filter(regex="_lag" + lag + "$").T.values[0][0]
+        beta = dat1.filter(regex='beta').filter(regex="_lag" + lag + "$").T.values[0][0]
+        gamma = dat1.filter(regex='gamma').filter(regex="_lag" + lag + "$").T.values[0][0]
+
+        return {"alpha": alpha,
+                "beta": beta,
+                "gamma": gamma,
+                "lag": int(lag)}
+"""

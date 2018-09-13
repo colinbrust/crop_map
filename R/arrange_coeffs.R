@@ -12,10 +12,10 @@ get_best_month_lag <- function() {
                   lag = stringr::str_replace(lag, "lag", "") %>% as.numeric()) %>%
     tidyr::spread(coeff, value) %>%
     dplyr::group_by(county, state, crop, stat) %>%
-    dplyr::slice(which.min(rmse)) 
+    dplyr::slice(which.min(rmse)) %>%
+    dplyr::ungroup()
 
 }
-
 
 add_state_name <- function(fname) {
   
@@ -50,3 +50,5 @@ add_state_name <- function(fname) {
                        stat = stat_name) %>%
     dplyr::rename(county = X1))
 }
+
+get_best_month_lag() %>% readr::write_csv("./data_frames/best_month_coeffs.csv")

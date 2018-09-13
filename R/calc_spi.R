@@ -29,7 +29,7 @@ reorder_data <- function(dat, win) {
         frequency = 12
       )
     } %>%
-    SPEI::spi(scale = win, distribution = "PearsonIII") %>%
+    SPEI::spi(scale = win, distribution = "log-Logistic") %>%
     {
       .$fitted
     } %>%
@@ -58,12 +58,14 @@ calc_spi <- function(win) {
     dplyr::do(reorder_data(., win)) %>%
     dplyr::ungroup() %>%
     dplyr::mutate(
-      county_name = county_name %>%
+      county = county_name %>%
         tolower() %>%
         stringr::str_replace("&", "and") %>% 
         stringr::str_replace_all(" ", "_"),
       date = format(as.Date(date, "%Y-%m-%d"), "%Y-%m")
-    )
+    ) %>%
+    dplyr::select(-county_name) %>%
+    tidyr::separate(date, into = c("year", "month"), sep = "-")
 }
 
 lapply(1:15, calc_spi) %>%
