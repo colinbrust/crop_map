@@ -11,9 +11,6 @@ import datetime
 import os
 import subprocess
 from scipy import signal
-import json
-#from standard_precip.spi import SPI
-
 
 # given a date, this function downloads pet and precip images for the area surrounding Montana.
 def download_data(d):
