@@ -33,8 +33,10 @@ detrend_data <- function(fname) {
   detrend_data() %>% 
   dplyr::do(spi_calc(.)) %>%
   dplyr::ungroup() %>%
+  dplyr::rename(orig_year = year) %>%
   dplyr::mutate(crop = dplyr::if_else(crop == "BARLEY", "bar", crop),
                 crop = dplyr::if_else(crop == "WHEAT", "whe", crop),
-                crop = dplyr::if_else(crop == "HAY", "alf", crop)) %>%
+                crop = dplyr::if_else(crop == "HAY", "alf", crop),
+                year = orig_year + 1) %>%
   readr::write_csv("../data_frames/scvi_detrended.csv")
 

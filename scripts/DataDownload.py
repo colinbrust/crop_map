@@ -311,6 +311,50 @@ def save_all_nass():
 
     dat_out.to_csv(out_name)
 
+
+def manage_current_year(stat):
+
+    if int(datetime.datetime.today().month) == 1:
+        return pd.DataFrame()
+
+    dat = pd.read_csv("../data_frames/spi_out.csv")
+    dat = dat[dat['year'] == datetime.datetime.today().year]
+
+    opt = pd.read_csv("../data_frames/best_month_coeffs.csv")
+    opt = opt.rename(index=str, columns={"lag": "window"})
+
+    dat_nass = pd.read_csv("../data_frames/scvi_detrended.csv")
+
+    merged = pd.merge(dat, opt, how='right',
+                    left_on=['state', 'month', 'window', 'county'],
+                    right_on=['state', 'month', 'window', 'county'])
+
+    complete = merged[merged.spi.notnull()]
+    incomp = merged[merged.spi.isnull()]
+    incomp = incomp.drop(['variable', 'spi', 'year', 'month', 'window',
+                          'alpha', 'beta', 'gamma', 'rmse'], axis=1)
+    incomp['month'] = int(datetime.datetime.today().month) - 1
+
+    for_merge = pd.read_csv("../data_frames/tidy_coeffs.csv")
+
+    for_merge = pd.merge(incomp, for_merge, how='left',
+                    left_on=['state', 'month', 'stat', 'county', 'crop'],
+                    right_on=['state', 'month', 'stat', 'county', 'crop'])
+    for_merge = for_merge.rename(index=str, columns={"lag": "window"})
+
+    merged = pd.merge(dat, for_merge, how='right',
+                      left_on=['state', 'month', 'window', 'county'],
+                      right_on=['state', 'month', 'window', 'county'])
+
+    dat = complete.append(merged)
+    dat = pd.merge(dat, dat_nass, how='left',
+                   left_on=['state', 'year', 'crop'],
+                   right_on=['state', 'year', 'crop'])
+    dat = dat.assign(scpi=(dat.alpha * dat.spi) + (dat.beta * dat.scvi) + dat.gamma)
+    dat = dat[dat['stat'] == stat]
+    return dat
+
+
 def calc_scpi(stat):
 
     # data frames containing all necessary data.
@@ -329,10 +373,11 @@ def calc_scpi(stat):
                    right_on=['state', 'month', 'window', 'county', 'crop'])
 
     dat = dat.assign(scpi=(dat.alpha*dat.spi) + (dat.beta*dat.scvi) + dat.gamma)
+    dat = dat[dat['year'] < 2018]
+
+    dat = dat.append(manage_current_year(stat), sort=False)
 
     dat.to_csv("../data_frames/master_scpi.csv")
-
-
 
 """
 

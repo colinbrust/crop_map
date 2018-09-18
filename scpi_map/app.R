@@ -10,6 +10,7 @@
 library(shiny)
 library(magrittr)
 library(leaflet)
+library(mapview)
 
 # Define UI for application that draws a histogram
 ui <- bootstrapPage(
