@@ -1,14 +1,28 @@
 historical_plot <- function(dat, state, county, crop) {
   
   library(ggplot2)
+
+  cName <- county %>%
+    stringr::str_replace_all("_", "") %>%
+    toupper()
+  
+  crName <- switch(crop, 
+                   "alf" = "Alfalfa", 
+                   "bar" = "Barley", 
+                   "whe" = "Wheat")
+    
   out_dat <- dat %>%
     dplyr::filter(state == !!state, 
                   county == !!county,
                   crop == !!crop)
   
-  if (nrow(out_dat) == 0) {
+  if (nrow(out_dat) == 0 || county == "outlines") {
     
-    return(NULL)
+    ggplot(dat, aes(x = year, y = scpi)) + 
+      geom_blank() + 
+      theme_minimal() + 
+      labs(x = "Year", y = "SCPI", 
+           title = paste("No Data for", county, "County"))
     
   } else {
     
@@ -25,8 +39,8 @@ historical_plot <- function(dat, state, county, crop) {
         geom_hline(yintercept = 0, size = 0.5, color = "red", 
                    linetype = 'dashed') +
         theme_minimal() + 
-        ylab("SCPI") + 
-        xlab("Year") +
+      labs(x = "Year", y = "SCPI", 
+           title = paste("SCPI for", cName, "County", crName, "Production")) +
       theme(legend.position = "none") %>%
       return()
   }

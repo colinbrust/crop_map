@@ -17,15 +17,18 @@ def daily_process(date):
 
 def monthly_process():
 
-    if datetime.datetime.today().day == 04:
+    if datetime.datetime.today().day == 21:
 
         DataDownload.save_all_nass()
         DataDownload.update_csv()
         DataDownload.run_r_spi()
+        DataDownload.run_r_scvi()
+        DataDownload.calc_scpi('spi')
 
 
 
 [daily_process(str(d)) for d in DataDownload.download_latest()]
+monthly_process()
 
 
 

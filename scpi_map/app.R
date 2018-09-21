@@ -7,6 +7,7 @@
 #    http://shiny.rstudio.com/
 #
 
+# library(crosstalk)
 library(shiny)
 library(magrittr)
 library(leaflet)
@@ -16,34 +17,10 @@ library(shinydashboard)
 library(RColorBrewer)
 source("./helpers.R")
 
-# Define UI for application that draws a histogram
-# ui <- fluidPage(
-#   titlePanel("Standardized Crop Production Index Map"),
-#   sidebarLayout(
-#     sidebarPanel(
-#       selectInput("year", "Year (1979 - Present)",
-#         selected = lubridate::year(Sys.Date()),
-#         choices = c(1979:lubridate::year(Sys.Date()))
-#       ),
-#       radioButtons(
-#         "crop", "Crop:",
-#         c(
-#           "Alfalfa" = "alf",
-#           "Wheat" = "whe",
-#           "Barley" = "bar"
-#         )
-#       )
-#     ),
-#     mainPanel(
-#       leafletOutput("map")
-#     )
-#   )
-# )
-
 ui <- bootstrapPage(
   title = "Standardized Crop Production Index",
   tags$style(type = "text/css", "html, body {width:100%;height:100%}"),
-  leafletOutput("map", width = "100%", height = "100%"),
+  mapview::mapviewOutput("map", width = "100%", height = "100%"),
   absolutePanel(
     id="controls",
     style="z-index:500;",
@@ -64,19 +41,15 @@ ui <- bootstrapPage(
   )
 )
 
+outlines <- sf::read_sf("../boundaries/all_merged.geojson") %>% 
+  dplyr::rename(state = state_name)
 
-outlines <- sf::read_sf("../boundaries/all_merged.geojson")
+dat <- readr::read_csv("../data_frames/master_scpi.csv",
+    col_types = readr::cols()
+  ) %>%
+  dplyr::select(-X1, -window, -month, -scvi, -orig_year, 
+                -stat, -alpha, -beta, -gamma, -variable, -spi)
 
-suppressWarnings(
-  dat <- outlines %>%
-    dplyr::rename(state = state_name) %>%
-    dplyr::full_join(readr::read_csv("../data_frames/master_scpi.csv",
-      col_types = readr::cols()
-    ),
-    by = c("state", "county")
-    ) %>%
-    dplyr::select(-X1)
-)
 
 
 # Define server logic required to draw a histogram
@@ -89,7 +62,10 @@ server <- function(input,
       dplyr::filter(
         year == input$year,
         crop == input$crop
-      )
+      ) %>%
+      dplyr::right_join(outlines, by = c("county", "state")) %>%
+      sf::st_as_sf()
+    
   })
   
   out_plot <- observeEvent(input$map_shape_click, { # update the location selectInput on map clicks
@@ -97,6 +73,7 @@ server <- function(input,
     p <- input$map_shape_click 
     
     print(p)
+
     # p$id %>%
     #   stringr::str_split("/") %>%
     #   unlist() %>%
@@ -106,21 +83,12 @@ server <- function(input,
 
   output$map <- renderLeaflet({
     
-    Ndat <- filteredData()
+    out_dat <- filteredData()
     
-      
-    out_map <- tm_basemap(leaflet::providers$Stamen.TerrainBackground) +
-      tm_shape(outlines) +
-      tm_borders(alpha = 0.5) +
-      tm_fill("gray") +
-      tm_shape(Ndat) +
-      tm_polygons("scpi", group = paste(Ndat$state, Ndat$county, sep = "/"),
-                                        midpoint = 0) +
-      tm_legend(legend.position = c("right", "bottom"),
-                main.title = "SCPI",
-                main.title.position = "center")
-
-    tmap_leaflet(out_map)
+    test = mapview(out_dat)
+    
+    test@map
+    
   })
 }
 

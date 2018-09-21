@@ -373,7 +373,7 @@ def calc_scpi(stat):
                    right_on=['state', 'month', 'window', 'county', 'crop'])
 
     dat = dat.assign(scpi=(dat.alpha*dat.spi) + (dat.beta*dat.scvi) + dat.gamma)
-    dat = dat[dat['year'] < 2018]
+    dat = dat[dat['year'] < datetime.datetime.today().year]
 
     dat = dat.append(manage_current_year(stat), sort=False)
 
