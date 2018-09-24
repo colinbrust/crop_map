@@ -50,8 +50,6 @@ dat <- readr::read_csv("../data_frames/master_scpi.csv",
   dplyr::select(-X1, -window, -month, -scvi, -orig_year, 
                 -stat, -alpha, -beta, -gamma, -variable, -spi)
 
-
-
 # Define server logic required to draw a histogram
 server <- function(input,
                    output, session) {
@@ -68,29 +66,28 @@ server <- function(input,
     
   })
   
-  out_plot <- observeEvent(input$map_shape_click, { # update the location selectInput on map clicks
-    
-    p <- input$map_shape_click 
-    
-    print(p)
-
-    # p$id %>%
-    #   stringr::str_split("/") %>%
-    #   unlist() %>%
-    #   {historical_plot(dat, .[[1]], .[[2]], input$crop)}
-    
-  })
-
   output$map <- renderLeaflet({
     
     out_dat <- filteredData()
     
-    test = mapview(out_dat)
+    out_plot <- list.files("../plot_data/", pattern = crop, 
+                           full.names = T) %>%
+      readRDS()
+                  
+    out_map = mapview(out_dat, 
+                   popup = out_plot,
+                   zcol = "scpi")
     
-    test@map
+    out_map@map
     
   })
 }
 
 # Run the application
 shinyApp(ui = ui, server = server)
+
+#change palette to divergent 
+
+#run cronjob
+
+# plot actual anomaly 

@@ -1,7 +1,7 @@
-historical_plot <- function(dat, state, county, crop) {
+historical_plot <- function(state, county, crop, dat) {
   
   library(ggplot2)
-
+  
   cName <- county %>%
     stringr::str_replace_all("_", "") %>%
     toupper()
@@ -16,7 +16,7 @@ historical_plot <- function(dat, state, county, crop) {
                   county == !!county,
                   crop == !!crop)
   
-  if (nrow(out_dat) == 0 || county == "outlines") {
+  if (nrow(out_dat) == 0) {
     
     ggplot(dat, aes(x = year, y = scpi)) + 
       geom_blank() + 
@@ -31,6 +31,7 @@ historical_plot <- function(dat, state, county, crop) {
     
     out_dat <- data.frame(year=interp$x, scpi=interp$y) %>%
       dplyr::mutate(color = dplyr::if_else(scpi <= 0, "neg", "pos"))
+    
     
     out_dat %>%
       ggplot(aes(x = year, y = scpi)) + 

@@ -1,10 +1,7 @@
 import DataDownload
-import utilsRaster
 import datetime
 import os
 import glob
-import numpy as np
-
 
 def daily_process(date):
 
