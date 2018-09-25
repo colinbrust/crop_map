@@ -19,7 +19,8 @@ source("./helpers.R")
 
 ui <- bootstrapPage(
   title = "Standardized Crop Production Index",
-  tags$style(type = "text/css", "html, body {width:100%;height:100%}"),
+  tags$style(type = "text/css", "html, body {width:100%;height:100%}",
+             "div.info.legend.leaflet-control br {clear: both;}"),
   mapview::mapviewOutput("map", width = "100%", height = "100%"),
   absolutePanel(
     id="controls",
@@ -70,13 +71,17 @@ server <- function(input,
     
     out_dat <- filteredData()
     
-    out_plot <- list.files("../plot_data/", pattern = crop, 
+    out_plot <- list.files("../plot_data/", pattern = input$crop, 
                            full.names = T) %>%
       readRDS()
-                  
+   
+    mapviewOptions(legend.pos = "bottomright")         
     out_map = mapview(out_dat, 
                    popup = out_plot,
-                   zcol = "scpi")
+                   zcol = "scpi",
+                   na.label = "No Data",
+                   col.regions = brewer.pal(9,"RdBu"),
+                   layer.name = "SCPI (Standard Deviations)")
     
     out_map@map
     
@@ -86,8 +91,5 @@ server <- function(input,
 # Run the application
 shinyApp(ui = ui, server = server)
 
-#change palette to divergent 
-
 #run cronjob
 
-# plot actual anomaly 

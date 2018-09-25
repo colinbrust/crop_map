@@ -244,6 +244,18 @@ def run_r_scvi():
     subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/detrend_standard_scvi.R"])
 
 
+def run_r_prod():
+
+    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/detrend_standard_prod.R"])
+
+
+def run_r_graph():
+
+    subprocess.call(["/usr/local/bin/Rscript", "--vanilla", "../R/save_popups.R"])
+
+
+run_r_graph()
+
 # returns the data from the NASS Quickstats API given a crop, year and state input.
 def get_nass_data(crop, year, state):
 
@@ -256,12 +268,38 @@ def get_nass_data(crop, year, state):
 
     parameters = {"source_desc": "SURVEY",
                   "year__LE": year,
-                  "reference_period_desc": "MARKETING YEAR",
                   "agg_level_desc": "STATE",
                   "state_alpha": state,
                   "short_desc": data_item,
                   "commodity_desc": crop,
                   "domain_desc": "TOTAL"
+                  }
+
+    response = requests.get('http://quickstats.nass.usda.gov/api/api_GET/'
+                            '?key=41C2FA23-531A-3899-B471-871B13C2748C',
+                            params=parameters)
+
+    return response.json()['data']
+
+
+def get_nass_production(crop, state):
+
+    if crop == "BARLEY":
+        data_item = "BARLEY - PRODUCTION, MEASURED IN BU"
+    elif crop == "WHEAT":
+        data_item = "WHEAT - PRODUCTION, MEASURED IN BU"
+    elif crop == "HAY":
+        data_item = "HAY, ALFALFA - PRODUCTION, MEASURED IN TONS"
+
+    parameters = {"source_desc": "SURVEY",
+                  "year__LE": datetime.datetime.today().year,
+                  "agg_level_desc": "STATE",
+                  "state_alpha": state,
+                  "short_desc": data_item,
+                  "commodity_desc": crop,
+                  "domain_desc": "TOTAL",
+                  "freq_desc": "ANNUAL",
+                  "reference_period_desc": "YEAR"
                   }
 
     response = requests.get('http://quickstats.nass.usda.gov/api/api_GET/'
@@ -290,8 +328,28 @@ def parse_nass_data(dat):
          })
 
 
+def save_nass_production():
+
+    crops = ["BARLEY", "WHEAT", "HAY"]
+    states = ["MT", "ID", "WY", "ND", "SD"]
+
+    all_data = []
+
+    for state in states:
+        for crop in crops:
+
+            dat = get_nass_production(crop, state)
+            all_data.append(dat)
+
+    dat_out = pd.concat(map(parse_nass_data, all_data), ignore_index=True)
+
+    out_name = "../data_frames/nass_production.csv"
+
+    dat_out.to_csv(out_name)
+
+
 # creates combination of all possible NASS entries and then saves out to csv using parse_nass_data function.
-def save_all_nass():
+def save_scvi():
 
     crops = ["BARLEY", "WHEAT", "HAY"]
     states = ["MT", "ID", "WY", "ND", "SD"]

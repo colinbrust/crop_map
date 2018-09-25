@@ -28,7 +28,6 @@ detrend_data <- function(fname) {
     
 }
 
-
 "../data_frames/nass_data.csv" %>%
   detrend_data() %>% 
   dplyr::do(spi_calc(.)) %>%

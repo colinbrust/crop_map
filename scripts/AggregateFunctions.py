@@ -16,11 +16,14 @@ def monthly_process():
 
     if datetime.datetime.today().day == 21:
 
-        DataDownload.save_all_nass()
+        DataDownload.save_scvi()
+        DataDownload.save_nass_production()
         DataDownload.update_csv()
         DataDownload.run_r_spi()
         DataDownload.run_r_scvi()
+        DataDownload.run_r_prod()
         DataDownload.calc_scpi('spi')
+        DataDownload.run_r_graph()
 
 
 
