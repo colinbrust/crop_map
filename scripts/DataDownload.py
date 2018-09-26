@@ -244,17 +244,17 @@ def run_r_scvi():
     subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/detrend_standard_scvi.R"])
 
 
+# detrends and passes crop production values through spi function in R.
 def run_r_prod():
 
     subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/detrend_standard_prod.R"])
 
 
+# creates HTML graph objects to be used in the shiny app.
 def run_r_graph():
 
-    subprocess.call(["/usr/local/bin/Rscript", "--vanilla", "../R/save_popups.R"])
+    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/save_popups.R"])
 
-
-run_r_graph()
 
 # returns the data from the NASS Quickstats API given a crop, year and state input.
 def get_nass_data(crop, year, state):

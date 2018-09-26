@@ -3,6 +3,8 @@ import datetime
 import os
 import glob
 
+os.chdir('/home/colin.brust/workspace/scripts')
+
 def daily_process(date):
 
     DataDownload.download_data(date)

@@ -1,10 +1,15 @@
+county_change <- function(name) {
+  
+  name %>%
+    stringr::str_replace_all("_", " ") %>%
+    tools::toTitleCase()
+}
+
 historical_plot <- function(state, county, crop, dat, nass) {
   
   library(ggplot2)
   
-  cName <- county %>%
-    stringr::str_replace_all("_", " ") %>%
-    tools::toTitleCase()
+  cName <- county_change(county)
   
   crName <- switch(crop, 
                    "alf" = "Alfalfa", 
@@ -30,7 +35,8 @@ historical_plot <- function(state, county, crop, dat, nass) {
       theme_minimal() + 
       labs(x = "Year", y = "SCPI", 
            title = paste("No Data for", cName, "County")) +
-      theme(plot.title = element_text(hjust = 0.5))
+      theme(plot.title = element_text(hjust = 0.5),
+            text = element_text(family="Times", face="bold", size=12))
     
   } else {
     
@@ -56,7 +62,7 @@ historical_plot <- function(state, county, crop, dat, nass) {
                                    "Modeled\nProduction\nAnomaly\n")) +
       theme(plot.title = element_text(hjust = 0.5),
             text = element_text(family="Times", face="bold", size=12),
-            plot.subtitle = element_text(hjust = 0.5, family = "Times", size = 8)) %>%
+            plot.subtitle = element_text(hjust = 0.5, family = "Times", size = 10)) %>%
       return()
     
     # # This method taken from stack exchange" 
