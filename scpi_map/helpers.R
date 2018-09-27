@@ -40,22 +40,13 @@ historical_plot <- function(state, county, crop, dat, nass) {
     
   } else {
     
-    lab_out <- paste("SPI Lag (Months) -", unique(out_dat$window),
-                     "\nSPI Month Used -", month.name[unique(out_dat$month)],
-                     "\nAlpha (SPI) Coefficient -", round(unique(out_dat$alpha), 3),
-                     "\nBeta (SCVI) Coefficient -", round(unique(out_dat$beta), 3),
-                     "\nGamma Coefficient -", round(unique(out_dat$gamma), 3),
-                     "\nRMSE -", round(unique(out_dat$rmse), 3))
-    
-    
     out_dat %>%
       ggplot(aes(x = year, y = value, color = metric)) + 
       geom_line(size = 1) +
       geom_hline(yintercept = 0, linetype = "dashed") +
       theme_minimal() + 
       labs(x = "Year", y = "Production (Standard Deviations)", 
-           title = paste("Modeled (SCPI) vs Actual", crName, "Production for", cName, "County"),
-           subtitle = lab_out) +
+           title = paste("Modeled (SCPI) vs Actual", crName, "Production for", cName, "County")) +
       scale_color_discrete(name="",
                           breaks=c("prod", "scpi"),
                           labels=c("Actual\nProduction\nAnomaly\n", 

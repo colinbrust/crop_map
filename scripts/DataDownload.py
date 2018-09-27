@@ -248,7 +248,9 @@ def get_nass_data(crop, year, state):
                   "state_alpha": state,
                   "short_desc": data_item,
                   "commodity_desc": crop,
-                  "domain_desc": "TOTAL"
+                  "domain_desc": "TOTAL",
+                  "freq_desc": "ANNUAL",
+                  "reference_period_desc": "MARKETING YEAR"
                   }
 
     response = requests.get('http://quickstats.nass.usda.gov/api/api_GET/'
@@ -393,10 +395,6 @@ def manage_current_year(stat):
     dat = dat.assign(scpi=(dat.alpha * dat.spi) + (dat.beta * dat.scvi) + dat.gamma)
     dat = dat[dat['stat'] == stat]
     return dat
-
-
-pd.set_option('display.max_columns', 500)
-print(manage_current_year("spi"))
 
 
 def calc_scpi(stat):
