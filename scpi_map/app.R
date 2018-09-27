@@ -24,7 +24,7 @@ ui <- bootstrapPage(
   mapview::mapviewOutput("map", width = "100%", height = "100%"),
   absolutePanel(
     # id="controls",
-    # style="z-index:500;",
+    style="z-index:500;",
     # top = 0, right = 125,
     top = 20, right = 20, width = 300,
     fixed = T,
@@ -47,35 +47,11 @@ ui <- bootstrapPage(
   )
 )
 
-outlines <- sf::read_sf("../boundaries/all_merged.geojson") %>% 
-  dplyr::rename(state = state_name)
+outlines <- sf::read_sf("../boundaries/all_merged.geojson") 
 
-states <- sf::read_sf("../boundaries/state_outlines.geojson") %>%
-  sf::st_cast("LINESTRING")
+states <- sf::read_sf("../boundaries/state_outlines.geojson")
 
-dat <- readr::read_csv("../data_frames/master_scpi.csv",
-    col_types = readr::cols()
-  ) %>%
-  dplyr::select(-X1, -scvi, -orig_year, 
-                -stat, -variable, -spi) %>%
-  dplyr::mutate(lab=paste0('<strong>County</strong>: ', 
-                  county_change(county),
-                  '<br><strong>State</strong>: ',
-                  state,
-                  '<br><strong>SCPI</strong>: ',
-                  scpi,
-                  '<br><strong>RMSE</strong>: ',
-                  rmse,
-                  '<br><strong>Optimal Window</strong>: ', 
-                  window,
-                  '<br><strong>Optimal Month</strong>: ',
-                  month,
-                  '<br><strong>Alpha Coefficient</strong>: ',
-                  alpha,
-                  '<br><strong>Beta Coefficient</strong>: ', 
-                  beta,
-                  '<br><strong>Gamma Coeffieient</strong>: ',
-                  gamma))
+dat <- readr::read_csv("../data_frames/scpi_use.csv", col_types = readr::cols())
 
 # Define server logic required to draw a histogram
 server <- function(input,
@@ -130,18 +106,17 @@ server <- function(input,
       as.list() %>%
       lapply(HTML)
    
-    mapviewOptions(legend.pos = "bottomright")         
-    out_map = mapview(out_dat, 
-                   popup = out_plot,
-                   zcol = c("scpi"),
-                   label = labs, 
-                   na.label = "No Data",
-                   col.regions = brewer.pal(9,"RdBu"),
-                   layer.name = "SCPI (Standard Deviations)") %>%
-      addFeatures(states, weight = 3, color = "black")
-      
+    mapviewOptions(legend.pos = "bottomright")
     
-    out_map
+     mapview(out_dat, 
+             popup = out_plot,
+             zcol = c("scpi"),
+             label = labs, 
+             na.label = "No Data",
+             col.regions = brewer.pal(9,"RdBu"),
+             layer.name = "SCPI (Standard Deviations)") %>%
+      addFeatures(states, weight = 3, color = "black") %>%
+      setView(lng = -107.5, lat = 46, zoom = 5)
     
   })
 }

@@ -16,7 +16,7 @@ def daily_process(date):
 
 def monthly_process():
 
-    if datetime.datetime.today().day == 21:
+    if datetime.datetime.today().day == 27:
 
         DataDownload.save_scvi()
         DataDownload.save_nass_production()
@@ -26,7 +26,7 @@ def monthly_process():
         DataDownload.run_r_prod()
         DataDownload.calc_scpi('spi')
         DataDownload.run_r_graph()
-
+        DataDownload.run_r_mouse()
 
 
 [daily_process(str(d)) for d in DataDownload.download_latest()]

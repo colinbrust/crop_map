@@ -231,30 +231,6 @@ def detrend_data():
     return pd.DataFrame({'info': dat_out.index,
                          'values': dat_out.values})
 
-# R script that calculates SPI and saves out a csv.
-# The SPI package for python only works on python 3
-def run_r_spi():
-
-    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/calc_spi.R"])
-
-
-# Detrends and passes scvi values through spi function in R.
-def run_r_scvi():
-
-    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/detrend_standard_scvi.R"])
-
-
-# detrends and passes crop production values through spi function in R.
-def run_r_prod():
-
-    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/detrend_standard_prod.R"])
-
-
-# creates HTML graph objects to be used in the shiny app.
-def run_r_graph():
-
-    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/save_popups.R"])
-
 
 # returns the data from the NASS Quickstats API given a crop, year and state input.
 def get_nass_data(crop, year, state):
@@ -282,6 +258,7 @@ def get_nass_data(crop, year, state):
     return response.json()['data']
 
 
+# uses the NASS Quickstats API to get actual production for every crop
 def get_nass_production(crop, state):
 
     if crop == "BARLEY":
@@ -328,6 +305,7 @@ def parse_nass_data(dat):
          })
 
 
+# uses the parse_nass_data function to save out crop production from NASS API.
 def save_nass_production():
 
     crops = ["BARLEY", "WHEAT", "HAY"]
@@ -370,6 +348,10 @@ def save_scvi():
     dat_out.to_csv(out_name)
 
 
+# For the current year, it is possible that the optimal month hasn't yet been reached to calculate the SCPI.
+# To fix the issue, this function looks the optimal month/lag of a county and determines if it has been reached yet.
+# If it has, the optimal month and lag is used. If it hasn't, the current month and most optimal lag for the current
+# month is used.
 def manage_current_year(stat):
 
     if int(datetime.datetime.today().month) == 1:
@@ -413,6 +395,10 @@ def manage_current_year(stat):
     return dat
 
 
+pd.set_option('display.max_columns', 500)
+print(manage_current_year("spi"))
+
+
 def calc_scpi(stat):
 
     # data frames containing all necessary data.
@@ -437,216 +423,36 @@ def calc_scpi(stat):
 
     dat.to_csv("../data_frames/master_scpi.csv")
 
-"""
 
-# returns the spi for a county based on optimal lag period.
-def get_matching_spi(dat, state, county, lag, yyyymm):
+# Functions that are written in R. These other use the SCVI package or use R specific functions to
+# create objects for the shiny app.
 
-    if (county not in dat['county_name'].values) or np.isnan(lag):
-        return np.nan
+# R script that calculates SPI and saves out a csv.
+# The SPI package for python only works on python 3
+def run_r_spi():
 
-    else:
-        dat = dat[(dat['state'] == state) &
-                  (dat['county_name'] == county) &
-                  (dat['window'] == lag) &
-                  (dat['date'] == yyyymm)]
+    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/calc_spi.R"])
 
-        return dat.spi.values[0]
 
+# Detrends and passes scvi values through spi function in R.
+def run_r_scvi():
 
-# returns a scvi for a given crop, year and state
-def get_corresponding_nass(dat, crop, year, state):
+    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/detrend_standard_scvi.R"])
 
-    dat = dat[(dat['state'] == state) &
-              (dat['crop'] == crop) &
-              (dat['year'] == year)]
 
-    if dat.empty:
-        return np.nan
-    else:
-        return dat.value.values[0]
+# detrends and passes crop production values through spi function in R.
+def run_r_prod():
 
+    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/detrend_standard_prod.R"])
 
-def calc_county_scpi(dat_spi, dat_nass, yyyymm, crop):
 
-    year = yyyymm.split("-")[0]
-    month = yyyymm.split("-")[1]
+# creates HTML graph objects to be used in the shiny app.
+def run_r_graph():
 
-    boundaries = ["../boundaries/state_boundaries/MT.geojson",
-                  "../boundaries/state_boundaries/ID.geojson",
-                  "../boundaries/state_boundaries/ND.geojson",
-                  "../boundaries/state_boundaries/SD.geojson",
-                  "../boundaries/state_boundaries/WY.geojson"]
+    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/save_popups.R"])
 
-    if crop == "BARLEY":
-        short = "bar"
-    elif crop == "WHEAT":
-        short = "whe"
-    elif crop == "HAY":
-        short = "alf"
-    out_dict = {}
 
-    for bnd in boundaries:
+# creates HTML table objects to be used in the shiny app.
+def run_r_mouse():
 
-        state = bnd.split("/")[-1].replace(".geojson", "")
-
-        with open(bnd) as shp:
-            data = json.load(shp)
-
-        # just calculating from spi for the time being.
-        for feat in data['features']:
-
-            name = feat['properties']['NAME'].lower().replace(" ", "_").replace("&", "and")
-
-            add_name = state + "_" + name
-            coeffs = get_best_coef(crop=short, state=state, variable='spi',
-                                   county=name, month=int(month))
-
-            spi = get_matching_spi(dat=dat_spi, state=state, county=name,
-                                   lag=coeffs['lag'], yyyymm=yyyymm)
-
-            scvi = get_corresponding_nass(dat=dat_nass, crop=crop, year=int(year), state=state)
-
-            if np.isnan(spi):
-
-                new_dict = {'state': state,
-                            'county': name,
-                            'date': yyyymm,
-                            'crop': crop,
-                            'alpha': np.nan,
-                            'beta': np.nan,
-                            'gamma': np.nan,
-                            'spi': np.nan,
-                            'scvi': np.nan,
-                            'scpi': np.nan}
-
-                out_dict[add_name] = new_dict
-
-            else:
-
-                scpi = coeffs['alpha']*spi + coeffs['beta']*scvi + coeffs['gamma']
-
-                # also get the RMSE
-
-                new_dict = {'state': state,
-                            'county': name,
-                            'date': yyyymm,
-                            'crop': crop,
-                            'alpha': coeffs['alpha'],
-                            'beta': coeffs['beta'],
-                            'gamma': coeffs['gamma'],
-                            'spi': spi,
-                            'scvi': scvi,
-                            'scpi': scpi}
-
-                out_dict[add_name] = new_dict
-
-    return pd.DataFrame.from_dict(out_dict, orient='index')
-
-
-def update_scpi_csv():
-
-    dat_spi = pd.read_csv("../data_frames/spi_out.csv")
-    dat_nass = pd.read_csv("../data_frames/.csv", index_col=0)
-
-    crops = ['BARLEY', 'WHEAT', 'HAY']
-    all_dates = dat_spi.date.unique()
-
-    dat = pd.read_csv("../data_frames/master_scpi.csv", index_col=0)
-
-    for yyyymm in all_dates:
-
-        for crop in crops:
-
-            if yyyymm not in dat.date.unique():
-
-                print(dat)
-                dat = dat.append(calc_county_scpi(dat_nass=dat_nass, dat_spi=dat_spi,
-                                                  yyyymm=yyyymm, crop=crop))
-
-    dat.to_csv("../data_frames/master_scpi.csv")
-
-# not sure if this is necessary. Returns a range of dates.
-def get_date_range():
-
-    dat = pd.read_csv("../data_frames/master_df.csv", index_col=0)
-    dat = dat[dat.state.notnull()]
-    dat['date'] = pd.to_datetime(dat['date'], format='%Y-%m-%d')
-    dat = dat.sort_values(by=['date'])
-
-    dates = dat['date'].unique()
-
-    start = datetime.datetime.utcfromtimestamp(dates[0].tolist()/1e9).date()
-    end = datetime.datetime.utcfromtimestamp(dates[-1].tolist()/1e9).date()
-
-    # taken from stack exchange: https://stackoverflow.com/questions/34898525/generate-list-of-months-between-
-    # interval-in-python
-    daterange = pd.date_range(str(start), str(end), freq='1M')
-    daterange = [d.strftime('%Y-%m') for d in daterange]
-
-    return daterange
-
-# ASK ABOUT WINDOW TYPE
-# function that calculates SPI
-def calc_spi(dat, start_mo, win):
-
-    spi = SPI()
-    spi.set_rolling_window_params(
-        span=win,
-        window_type='boxcar',
-        center=True
-    )
-
-    spi.set_distribution_params(dist_type='gam')
-
-    return spi.calculate(dat, starting_month=start_mo)
-
-
-def apply_all_spi():
-
-    dat = detrend_data().values[0]
-
-    state = dat[0][0]
-    county = dat[0][1].lower().replace(" ", "-")
-    variable = dat[0][2]
-
-    months = get_date_range()
-    win_sizes = range(1, 16)
-
-    # for mon in months:
-    #     for win in win_sizes:
-    #         start = int(mon.split("-")[-1])
-    #         print(calc_spi(dat, start, win))
-
-Returns the coefficient value and optimal lag time based on inputs
-def get_best_coef(crop, state, variable, county, month):
-
-    # I am finding lowest RMSE and then selecting corresponding values. Make sure this is correct.
-    dat1 = pd.read_csv("../data_frames/coeffs/%s_%s_%s_Allcoeffs_ML.csv" % (crop, state, variable),
-                      index_col=0)
-
-    if county not in dat1.index:
-
-        return {"alpha": np.nan,
-                "beta": np.nan,
-                "gamma": np.nan,
-                "lag": np.nan}
-
-    else:
-
-        dat1 = dat1.filter(regex="_month" + str(month) + "_")
-        dat1 = dat1.filter(regex="^" + county + "$", axis=0)
-
-        dat = dat1.filter(regex="rmse").T
-
-        lag = dat.idxmin().values[0].split("_")[-1].replace("lag", "")
-
-        alpha = dat1.filter(regex='alpha').filter(regex="_lag" + lag + "$").T.values[0][0]
-        beta = dat1.filter(regex='beta').filter(regex="_lag" + lag + "$").T.values[0][0]
-        gamma = dat1.filter(regex='gamma').filter(regex="_lag" + lag + "$").T.values[0][0]
-
-        return {"alpha": alpha,
-                "beta": beta,
-                "gamma": gamma,
-                "lag": int(lag)}
-"""
+    subprocess.call(["/usr/local/bin/Rscript", "--vanilla", "../R/add_mouseover_data.R"])
