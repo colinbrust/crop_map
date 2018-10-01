@@ -22,6 +22,7 @@ def monthly_process():
         DataDownload.save_nass_production()
         DataDownload.update_csv()
         DataDownload.run_r_spi()
+        DataDownload.save_eddi()
         DataDownload.run_r_scvi()
         DataDownload.run_r_prod()
         DataDownload.calc_scpi('spi')

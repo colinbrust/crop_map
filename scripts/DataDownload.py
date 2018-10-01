@@ -10,6 +10,7 @@ import requests
 import datetime
 import os
 import subprocess
+from scipy.stats import rankdata
 from scipy import signal
 
 # given a date, this function downloads pet and precip images for the area surrounding Montana.
@@ -241,18 +242,17 @@ def reorder_data():
     for df in dict.keys():
         dict[df]['date'] = pd.to_datetime(dict[df]['date'], format='%Y-%m-%d')
         dict[df] = dict[df].sort_values(by=['date'])
-        #dict[df]['value'] = signal.detrend(dict[df]['value'])
+        dict[df]['value'] = signal.detrend(dict[df]['value'])
         dict[df] = dict[df].set_index('date')
 
-    return dict["MT_missoula"]
+    return dict
 
 
 def prob_eoi(i, n):
     prob_eoi = (i - 0.33) / (n + 0.33)
     return prob_eoi
 
-
-def EDDI(prob):
+def eddi(x):
     C0 = 2.515517
     C1 = 0.802853
     C2 = 0.010328
@@ -260,67 +260,75 @@ def EDDI(prob):
     d2 = 0.189269
     d3 = 0.00130
 
-    EDDI = []
+    if x <= 0.5:
+        W = np.sqrt(-2. * np.log(x))
+        E = W - (C0 + C1 * W + C2 * W ** 2) / (1 + d1 * W + d2 * W ** 2 + d3 * W ** 3)
+    if x > 0.5:
+        W = np.sqrt(-2. * np.log(1 - x))
+        E = -1. * (W - (C0 + C1 * W + C2 * W ** 2) / (1 + d1 * W + d2 * W ** 2 + d3 * W ** 3))
 
-    for x in prob:
-        if x <= 0.5:
-            W = np.sqrt(-2. * np.log(x))
-            E = W - (C0 + C1 * W + C2 * W ** 2) / (1 + d1 * W + d2 * W ** 2 + d3 * W ** 3)
-        if x > 0.5:
-            W = np.sqrt(-2. * np.log(1 - x))
-            E = -1. * (W - (C0 + C1 * W + C2 * W ** 2) / (1 + d1 * W + d2 * W ** 2 + d3 * W ** 3))
-
-        EDDI.append(E)
-    return EDDI
-
-def eddi_apply(x):
+    return E
 
 
+def eddi_apply(i, n):
 
-def eddi_calc():
+    prob = prob_eoi(i, n)
 
-    df = reorder_data()
+    return eddi(prob)
+
+
+def eddi_calc(df):
 
     name = df.state_county.unique()
 
     df = df.drop(columns=['variable', 'state_county'])
 
-    for lag in np.arange(1, 16):
+    df_final = pd.DataFrame()
 
-        df_new = df.rolling(window=lag).sum()
-
-        print(df_new)
-
-    #df = df.rolling(window=12).sum()
-    #return df
-    '''
-    
     for lag in np.arange(1, 16):
         for month in np.arange(1, 13):
 
-            df = df.rolling(window=lag).sum()
+            df_new = df.rolling(window=lag).sum()
+            df_new = df_new.dropna()
+            df_new = df_new.sort_values(by='value', ascending=False)
+            df_new = df_new[df_new.index.month == month]
 
-            dfMo = df[df.index.month == month]
-            # dfFinal = pd.DataFrame(index=dfMo.index)
-            dfET = dfMo.dropna()
-            dfET = dfET.sort_values(by='pet', ascending=False)
-            dfET['rank'] = np.arange(1, len(dfET) + 1)
+            size = len(df_new)
 
-            i = np.arange(1, len(dfET) + 1)
-            n = len(dfET)
+            df_new['rank'] = np.arange(1, len(df_new) + 1)
+            df_new['size'] = np.repeat(size, size)
+            df_new['eddi'] = df_new.apply(lambda x: eddi_apply(x['rank'], x['size']), axis=1)
+            df_new['window'] = np.repeat(lag, size)
+            df_new['state_county'] = np.repeat(name, size)
 
-            ## solve for P(Eoi)
-            prob = prob_eoi(i, n)
-            indexVals = EDDI(prob)
+            df_new = df_new.reset_index()
 
-            dfET['EDDI%s' % lag] = indexVals
+            df_new['date'] = df_new['date'].dt.strftime('%Y-%m-%d')
+
+            df_new['state'], df_new['county'] = df_new['state_county'].str.split('_', 1).str
+            df_new['year'], df_new['month'], df_new['day'] = df_new['date'].str.split('-').str
+
+            df_new = df_new.drop(columns=['state_county', 'rank', 'size', 'date', 'day', 'value'])
+            df_final = df_final.append(df_new, ignore_index=True)
+
+    return df_final
 
 
-            dfFinal.update(dfET, raise_conflict=True)
+def save_eddi():
 
-    '''
+    dat = reorder_data()
+    dat_out = pd.DataFrame()
 
-#print(eddi_calc())
+    for df in dat.keys():
+
+        eddi_out = eddi_calc(dat[df])
+        dat_out = dat_out.append(eddi_out, ignore_index=True)
+        print(dat_out)
+
+    dat_out.to_csv("../data_frames/eddi_out.csv")
+
+save_eddi()
+
 
 # returns the data from the NASS Quickstats API given a crop, year and state input.
 def get_nass_data(crop, year, state):
