@@ -217,20 +217,110 @@ def update_csv():
     csv.to_csv("../data_frames/master_df.csv", sep=",")
 
 
-# reads the master dataframe csv and detrends precip and pet data by county.
-def detrend_data():
+# reads the master dataframe csv and reorders it into a dict by each county.
+def reorder_data():
 
     dat = pd.read_csv("../data_frames/master_df.csv", index_col=0)
     dat = dat[dat.state.notnull()]
-    dat['date'] = pd.to_datetime(dat['date'], format='%Y-%m-%d')
-    dat = dat.sort_values(by=['date'])
-    dat = dat.groupby(['state', 'county_name', 'variable'])
+    pet = dat['variable'] == 'pet'
+    dat = dat[pet]
 
-    dat_out = dat['value'].apply(lambda x: signal.detrend(x))
+    dat = dat.assign(county_name=dat.county_name.str.replace(" ", "_").str.replace("&", "and").str.lower())
 
-    return pd.DataFrame({'info': dat_out.index,
-                         'values': dat_out.values})
+    dat['state_county'] = dat.state.str.cat(dat.county_name, sep="_")
+    dat = dat.drop(columns=['county_name', 'state'])
 
+    unqs = dat.state_county.unique()
+
+    # create a data frame dictionary to store your data frames
+    dict = {elem: pd.DataFrame for elem in unqs}
+
+    for key in dict.keys():
+        dict[key] = dat[:][dat.state_county == key]
+
+    for df in dict.keys():
+        dict[df]['date'] = pd.to_datetime(dict[df]['date'], format='%Y-%m-%d')
+        dict[df] = dict[df].sort_values(by=['date'])
+        #dict[df]['value'] = signal.detrend(dict[df]['value'])
+        dict[df] = dict[df].set_index('date')
+
+    return dict["MT_missoula"]
+
+
+def prob_eoi(i, n):
+    prob_eoi = (i - 0.33) / (n + 0.33)
+    return prob_eoi
+
+
+def EDDI(prob):
+    C0 = 2.515517
+    C1 = 0.802853
+    C2 = 0.010328
+    d1 = 1.432788
+    d2 = 0.189269
+    d3 = 0.00130
+
+    EDDI = []
+
+    for x in prob:
+        if x <= 0.5:
+            W = np.sqrt(-2. * np.log(x))
+            E = W - (C0 + C1 * W + C2 * W ** 2) / (1 + d1 * W + d2 * W ** 2 + d3 * W ** 3)
+        if x > 0.5:
+            W = np.sqrt(-2. * np.log(1 - x))
+            E = -1. * (W - (C0 + C1 * W + C2 * W ** 2) / (1 + d1 * W + d2 * W ** 2 + d3 * W ** 3))
+
+        EDDI.append(E)
+    return EDDI
+
+def eddi_apply(x):
+
+
+
+def eddi_calc():
+
+    df = reorder_data()
+
+    name = df.state_county.unique()
+
+    df = df.drop(columns=['variable', 'state_county'])
+
+    for lag in np.arange(1, 16):
+
+        df_new = df.rolling(window=lag).sum()
+
+        print(df_new)
+
+    #df = df.rolling(window=12).sum()
+    #return df
+    '''
+    
+    for lag in np.arange(1, 16):
+        for month in np.arange(1, 13):
+
+            df = df.rolling(window=lag).sum()
+
+            dfMo = df[df.index.month == month]
+            # dfFinal = pd.DataFrame(index=dfMo.index)
+            dfET = dfMo.dropna()
+            dfET = dfET.sort_values(by='pet', ascending=False)
+            dfET['rank'] = np.arange(1, len(dfET) + 1)
+
+            i = np.arange(1, len(dfET) + 1)
+            n = len(dfET)
+
+            ## solve for P(Eoi)
+            prob = prob_eoi(i, n)
+            indexVals = EDDI(prob)
+
+            dfET['EDDI%s' % lag] = indexVals
+
+
+            dfFinal.update(dfET, raise_conflict=True)
+
+    '''
+
+#print(eddi_calc())
 
 # returns the data from the NASS Quickstats API given a crop, year and state input.
 def get_nass_data(crop, year, state):
