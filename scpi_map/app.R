@@ -42,6 +42,13 @@ ui <- bootstrapPage(
           "Barley" = "bar"
         )
       ),
+      radioButtons(
+        "stat", "Statistic:",
+        c(
+          "Standardized Precipitation Index (SPI)" = "spi",
+          "Evaporative Drought Demand Index (EDDI)" = "eddi"
+        )
+      ),
       actionButton("button", "Change Inputs")
     )
   )
@@ -71,6 +78,8 @@ server <- function(input,
       dplyr::filter(crop == input$crop) %>%
       {unique(.$year)}
     
+    years_use <- years_use[order(years_use)]
+    
     if (current_selection() %in% years_use) {
       updateSelectInput(session, "year",
                         selected = current_selection(),
@@ -84,7 +93,7 @@ server <- function(input,
   })
   
   button_vals <- eventReactive(input$button, {
-    list(input$year, input$crop)
+    list(input$year, input$crop, input$stat)
   }, ignoreNULL = FALSE)
   
 
@@ -93,7 +102,8 @@ server <- function(input,
     out_dat <- dat %>%
       dplyr::filter(
         year == button_vals()[[1]],
-        crop == button_vals()[[2]]
+        crop == button_vals()[[2]],
+        stat == button_vals()[[3]]
       ) %>%
       dplyr::right_join(outlines, by = c("county", "state")) %>%
       sf::st_as_sf()

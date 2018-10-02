@@ -247,11 +247,12 @@ def reorder_data():
 
     return dict
 
-
+# calc prob_eoi
 def prob_eoi(i, n):
     prob_eoi = (i - 0.33) / (n + 0.33)
     return prob_eoi
 
+# calc eddi based on prob_eoi
 def eddi(x):
     C0 = 2.515517
     C1 = 0.802853
@@ -269,7 +270,7 @@ def eddi(x):
 
     return E
 
-
+# merges two previous functions
 def eddi_apply(i, n):
 
     prob = prob_eoi(i, n)
@@ -277,6 +278,7 @@ def eddi_apply(i, n):
     return eddi(prob)
 
 
+# calculates eddi for all counties in study area. Method taken from Patrick Wurstner.
 def eddi_calc(df):
 
     name = df.state_county.unique()
@@ -326,8 +328,6 @@ def save_eddi():
         print(dat_out)
 
     dat_out.to_csv("../data_frames/eddi_out.csv")
-
-save_eddi()
 
 
 # returns the data from the NASS Quickstats API given a crop, year and state input.
@@ -457,10 +457,10 @@ def manage_current_year(stat):
     if int(datetime.datetime.today().month) == 1:
         return pd.DataFrame()
 
-    dat = pd.read_csv("../data_frames/spi_out.csv")
+    dat = pd.read_csv("../data_frames/%s_out.csv" % stat, index_col=0)
     dat = dat[dat['year'] == datetime.datetime.today().year]
 
-    opt = pd.read_csv("../data_frames/best_month_coeffs.csv")
+    opt = pd.read_csv("../data_frames/best_month_coeffs.csv", index_col=0)
     opt = opt.rename(index=str, columns={"lag": "window"})
 
     dat_nass = pd.read_csv("../data_frames/scvi_detrended.csv")
@@ -469,11 +469,15 @@ def manage_current_year(stat):
                     left_on=['state', 'month', 'window', 'county'],
                     right_on=['state', 'month', 'window', 'county'])
 
-    complete = merged[merged.spi.notnull()]
-    incomp = merged[merged.spi.isnull()]
-    incomp = incomp.drop(['variable', 'spi', 'year', 'month', 'window',
+    complete = merged[merged[stat].notnull()]
+    incomp = merged[merged[stat].isnull()]
+    incomp = incomp.drop([stat, 'year', 'month', 'window',
                           'alpha', 'beta', 'gamma', 'rmse'], axis=1)
-    incomp['month'] = int(datetime.datetime.today().month) - 1
+
+    if datetime.datetime.today().month == 12:
+        incomp['month'] = 1
+    else:
+        incomp['month'] = int(datetime.datetime.today().month - 1)
 
     for_merge = pd.read_csv("../data_frames/tidy_coeffs.csv")
 
@@ -490,7 +494,7 @@ def manage_current_year(stat):
     dat = pd.merge(dat, dat_nass, how='left',
                    left_on=['state', 'year', 'crop'],
                    right_on=['state', 'year', 'crop'])
-    dat = dat.assign(scpi=(dat.alpha * dat.spi) + (dat.beta * dat.scvi) + dat.gamma)
+    dat = dat.assign(scpi=(dat.alpha * dat[stat]) + (dat.beta * dat.scvi) + dat.gamma)
     dat = dat[dat['stat'] == stat]
     return dat
 
@@ -498,13 +502,13 @@ def manage_current_year(stat):
 def calc_scpi(stat):
 
     # data frames containing all necessary data.
-    dat_spi = pd.read_csv("../data_frames/spi_out.csv")
+    dat_in = pd.read_csv("../data_frames/%s_out.csv" % stat, index_col=0)
     dat_nass = pd.read_csv("../data_frames/scvi_detrended.csv")
     dat_coeff = pd.read_csv("../data_frames/best_month_coeffs.csv")
     dat_coeff = dat_coeff[dat_coeff['stat'] == stat]
     dat_coeff = dat_coeff.rename(index=str, columns={"lag": "window"})
 
-    dat = pd.merge(dat_spi, dat_nass, how='left',
+    dat = pd.merge(dat_in, dat_nass, how='left',
                    left_on=['state', 'year'],
                    right_on=['state', 'year'])
 
@@ -512,15 +516,16 @@ def calc_scpi(stat):
                    left_on=['state', 'month', 'window', 'county', 'crop'],
                    right_on=['state', 'month', 'window', 'county', 'crop'])
 
-    dat = dat.assign(scpi=(dat.alpha*dat.spi) + (dat.beta*dat.scvi) + dat.gamma)
+    dat = dat.assign(scpi=(dat.alpha*dat[stat]) + (dat.beta*dat.scvi) + dat.gamma)
     dat = dat[dat['year'] < datetime.datetime.today().year]
 
-    dat = dat.append(manage_current_year(stat), sort=False)
+    dat = dat.append(manage_current_year(stat), sort=False,
+                     ignore_index=True)
 
-    dat.to_csv("../data_frames/master_scpi.csv")
+    dat.to_csv("../data_frames/master_%s_scpi.csv" % stat)
 
 
-# Functions that are written in R. These other use the SCVI package or use R specific functions to
+# Functions that are written in R. These either use the SCVI package or use R specific functions to
 # create objects for the shiny app.
 
 # R script that calculates SPI and saves out a csv.
@@ -552,3 +557,6 @@ def run_r_graph():
 def run_r_mouse():
 
     subprocess.call(["/usr/local/bin/Rscript", "--vanilla", "../R/add_mouseover_data.R"])
+
+
+calc_scpi('spi')
