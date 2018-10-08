@@ -25,7 +25,7 @@ def monthly_process():
         DataDownload.save_eddi()
         DataDownload.run_r_scvi()
         DataDownload.run_r_prod()
-        DataDownload.calc_scpi('spi')
+        DataDownloatd.calc_scpi('spi')
         DataDownload.calc_scpi('eddi')
         #DataDownload.run_r_graph()
         #DataDownload.run_r_mouse()

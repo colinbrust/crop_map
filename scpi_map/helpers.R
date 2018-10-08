@@ -33,6 +33,9 @@ historical_plot <- function(state, county, stat, crop, dat, nass) {
     
   } else {
     
+    myColors <- c("blue", "red", "orange")
+    names(myColors) <- c("prod", "spi", "eddi")
+    
     out_dat %>%
       dplyr::left_join(nass, by = c("crop", "state", "year")) %>%
       dplyr::select(-stat_value, -window, -month, -lab,
@@ -49,20 +52,20 @@ historical_plot <- function(state, county, stat, crop, dat, nass) {
       geom_hline(yintercept = 0, linetype = "dashed") +
       theme_minimal() + 
       labs(x = "Year", y = "Production (Standard Deviations)", 
-           title = paste("Modeled", toupper(stat), "(SCPI) vs Actual", crName, "Production Anomalies for\n",
+           title = paste("Modeled", toupper(stat), "SCPI vs Actual", crName, "Production Anomalies for\n",
                          cName, "County")) +
-      scale_color_discrete(name="",
-                          breaks=c("prod", "spi", "eddi"),
-                          labels=c("Actual\nProduction\nAnomaly\n", 
-                                   "Modeled\nProduction\nAnomaly\n(SPI)\n",
-                                   "Modeled\nProduction\nAnomaly\n(EDDI)\n"), 
-                          colors = ) +
+      scale_color_manual(name="",
+                         values = myColors,
+                         labels=switch(stat,
+                             "eddi" = c("Actual\nProduction\nAnomaly\n", 
+                                    "Modeled\nProduction\nAnomaly\n(EDDI)\n"),
+                             "spi" = c("Actual\nProduction\nAnomaly\n", 
+                                       "Modeled\nProduction\nAnomaly\n(SPI)\n"))) +
       theme(plot.title = element_text(hjust = 0.5),
             text = element_text(family="Times", face="bold", size=12),
             plot.subtitle = element_text(hjust = 0.5, family = "Times", size = 10)) %>%
       return()
     
-
   }
   
 }

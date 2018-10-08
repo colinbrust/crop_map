@@ -242,7 +242,7 @@ def reorder_data():
     for df in dict.keys():
         dict[df]['date'] = pd.to_datetime(dict[df]['date'], format='%Y-%m-%d')
         dict[df] = dict[df].sort_values(by=['date'])
-        dict[df]['value'] = signal.detrend(dict[df]['value'])
+        #dict[df]['value'] = signal.detrend(dict[df]['value'])
         dict[df] = dict[df].set_index('date')
 
     return dict
@@ -283,6 +283,8 @@ def eddi_calc(df):
 
     name = df.state_county.unique()
 
+    print(name)
+
     df = df.drop(columns=['variable', 'state_county'])
 
     df_final = pd.DataFrame()
@@ -293,7 +295,7 @@ def eddi_calc(df):
             df_new = df.rolling(window=lag).sum()
             df_new = df_new.dropna()
             df_new = df_new.sort_values(by='value', ascending=False)
-            df_new = df_new[df_new.index.month == month]
+         #   df_new = df_new[df_new.index.month == month]
 
             size = len(df_new)
 
@@ -315,7 +317,6 @@ def eddi_calc(df):
 
     return df_final
 
-
 def save_eddi():
 
     dat = reorder_data()
@@ -325,7 +326,6 @@ def save_eddi():
 
         eddi_out = eddi_calc(dat[df])
         dat_out = dat_out.append(eddi_out, ignore_index=True)
-        print(dat_out)
 
     dat_out.to_csv("../data_frames/eddi_out.csv")
 
@@ -474,8 +474,8 @@ def manage_current_year(stat):
     incomp = incomp.drop([stat, 'year', 'month', 'window',
                           'alpha', 'beta', 'gamma', 'rmse'], axis=1)
 
-    if datetime.datetime.today().month == 12:
-        incomp['month'] = 1
+    if datetime.datetime.today().month == 1:
+        incomp['month'] = 12
     else:
         incomp['month'] = int(datetime.datetime.today().month - 1)
 
@@ -557,6 +557,3 @@ def run_r_graph():
 def run_r_mouse():
 
     subprocess.call(["/usr/local/bin/Rscript", "--vanilla", "../R/add_mouseover_data.R"])
-
-
-calc_scpi('spi')

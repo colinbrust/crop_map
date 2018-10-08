@@ -110,6 +110,7 @@ server <- function(input,
     
     out_plot <- list.files("../plot_data/", pattern = button_vals()[[2]], 
                            full.names = T) %>%
+      grep(pattern = button_vals()[[3]], ., value = T) %>%
       readRDS()
     
     labs <- out_dat$lab %>%
@@ -118,15 +119,21 @@ server <- function(input,
    
     mapviewOptions(legend.pos = "bottomright")
     
+    col_out <- seq(min(out_dat$scpi, na.rm = T), max(out_dat$scpi, na.rm = T),
+                   length.out = 10) %>%
+      round(1)
+    
      mapview(out_dat, 
              popup = out_plot,
              zcol = c("scpi"),
              label = labs, 
              na.label = "No Data",
-             col.regions = brewer.pal(9,"RdBu"),
+             col.regions = brewer.pal(10, "RdBu"),
+             at = col_out,
              layer.name = "SCPI (Standard Deviations)") %>%
       addFeatures(states, weight = 3, color = "black") %>%
-      setView(lng = -107.5, lat = 46, zoom = 5)
+      setView(lng = -107.5, lat = 46, zoom = 5) %>%
+      addProviderTiles(providers$CartoDB.Positron)
     
   })
 }
