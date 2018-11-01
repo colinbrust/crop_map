@@ -12,8 +12,6 @@ library(shiny)
 library(magrittr)
 library(leaflet)
 library(mapview)
-library(tmap)
-library(shinydashboard)
 library(RColorBrewer)
 source("./helpers.R")
 
@@ -93,47 +91,67 @@ server <- function(input,
   })
   
   button_vals <- eventReactive(input$button, {
+    
     list(input$year, input$crop, input$stat)
+    
   }, ignoreNULL = FALSE)
   
 
   output$map <- renderLeaflet({
     
-    out_dat <- dat %>%
-      dplyr::filter(
-        year == button_vals()[[1]],
-        crop == button_vals()[[2]],
-        stat == button_vals()[[3]]
-      ) %>%
-      dplyr::right_join(outlines, by = c("county", "state")) %>%
-      sf::st_as_sf()
+    withProgress(message = 'Making plot', value = 0, {
+      
+      out_dat <- dat %>%
+        dplyr::filter(
+          year == button_vals()[[1]],
+          crop == button_vals()[[2]],
+          stat == button_vals()[[3]]
+        ) %>%
+        dplyr::right_join(outlines, by = c("county", "state")) %>%
+        sf::st_as_sf()
+      
+      incProgress(1/5, detail = "Configured Input Data")
+      
+      out_plot <- list.files("../plot_data/", pattern = button_vals()[[2]], 
+                             full.names = T) %>%
+        grep(pattern = button_vals()[[3]], ., value = T) %>%
+        readRDS()
+      
+      incProgress(1/5, detail = "Created Plots for Input Data")
+      
+      labs <- out_dat$lab %>%
+        as.list() %>%
+        lapply(HTML)
+      
+      mapviewOptions(legend.pos = "bottomright")
+      
+      incProgress(1/5, detail = "Generated County Statistics")
+      
+      col_out <- seq(min(out_dat$scpi, na.rm = T), max(out_dat$scpi, na.rm = T),
+                     length.out = 10) %>%
+        round(1)
+      
+      incProgress(1/5, detail = "Drawing Map")
+      
+      out_map <- mapview(out_dat, 
+              popup = out_plot,
+              zcol = c("scpi"),
+              label = labs, 
+              na.label = "No Data",
+              col.regions = brewer.pal(10, "RdBu"),
+              at = col_out,
+              layer.name = "SCPI (Standard Deviations)") %>%
+        addFeatures(states, weight = 3, color = "black") %>%
+        setView(lng = -107.5, lat = 46, zoom = 5) %>%
+        addProviderTiles(providers$CartoDB.Positron)
+      
+      return(out_map)
+      
+      incProgress(1/5, detail = "Done!")
+      
+    })
+
     
-    out_plot <- list.files("../plot_data/", pattern = button_vals()[[2]], 
-                           full.names = T) %>%
-      grep(pattern = button_vals()[[3]], ., value = T) %>%
-      readRDS()
-    
-    labs <- out_dat$lab %>%
-      as.list() %>%
-      lapply(HTML)
-   
-    mapviewOptions(legend.pos = "bottomright")
-    
-    col_out <- seq(min(out_dat$scpi, na.rm = T), max(out_dat$scpi, na.rm = T),
-                   length.out = 10) %>%
-      round(1)
-    
-     mapview(out_dat, 
-             popup = out_plot,
-             zcol = c("scpi"),
-             label = labs, 
-             na.label = "No Data",
-             col.regions = brewer.pal(10, "RdBu"),
-             at = col_out,
-             layer.name = "SCPI (Standard Deviations)") %>%
-      addFeatures(states, weight = 3, color = "black") %>%
-      setView(lng = -107.5, lat = 46, zoom = 5) %>%
-      addProviderTiles(providers$CartoDB.Positron)
     
   })
 }

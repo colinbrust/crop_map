@@ -3,11 +3,11 @@ library(magrittr)
 library(sf)
 library(readr)
 library(dplyr)
-source("./scpi_map/helpers.R")
+source("../scpi_map/helpers.R")
 
 save_plot_obj <- function(crop, stat, dat, outlines, nass) {
   
-  out_name <- paste0("./plot_data/", crop, "_", stat, "_plots.RData")
+  out_name <- paste0("../plot_data/", crop, "_", stat, "_plots.RData")
   
   pop_plots <- outlines %>%
     dplyr::rowwise() %>%
@@ -20,12 +20,12 @@ save_plot_obj <- function(crop, stat, dat, outlines, nass) {
     
 }
 
-outlines <- sf::read_sf("./boundaries/all_merged.geojson") 
+outlines <- sf::read_sf("../boundaries/all_merged.geojson") 
 
-dat <- readr::read_csv("./data_frames/scpi_use.csv",
+dat <- readr::read_csv("../data_frames/scpi_use.csv",
                        col_types = readr::cols()) 
 
-nass <- readr::read_csv("./data_frames/prod_detrended.csv",
+nass <- readr::read_csv("../data_frames/prod_detrended.csv",
                         col_types = readr::cols())
 
 crops <- c("alf", "whe", "bar")

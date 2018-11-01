@@ -5,6 +5,7 @@ county_change <- function(name) {
     tools::toTitleCase()
 }
 
+
 historical_plot <- function(state, county, stat, crop, dat, nass) {
 
   library(ggplot2)

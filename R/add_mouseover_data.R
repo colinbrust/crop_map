@@ -9,7 +9,7 @@ county_change <- function(name) {
   
 add_hover_data <- function(stat) {
   
-  list.files("./data_frames", pattern = "master", full.names = T) %>%
+  list.files("../data_frames", pattern = "master", full.names = T) %>%
     grep(stat, ., value = T) %>%
     readr::read_csv(col_types = readr::cols()) %>%
     dplyr::select(-X1, -scvi, -orig_year, -stat) %>%
@@ -43,4 +43,4 @@ c("eddi", "spi") %>%
   lapply(add_hover_data) %>%
   dplyr::bind_rows() %>%
   dplyr::filter(!is.na(year)) %>% 
-  readr::write_csv("./data_frames/scpi_use.csv")
+  readr::write_csv("../data_frames/scpi_use.csv")

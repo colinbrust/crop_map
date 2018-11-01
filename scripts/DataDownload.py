@@ -10,6 +10,7 @@ import requests
 import datetime
 import os
 import subprocess
+from functools import partial
 from scipy.stats import rankdata
 from scipy import signal
 
@@ -290,33 +291,32 @@ def eddi_calc(df):
     df_final = pd.DataFrame()
 
     for lag in np.arange(1, 16):
-        for month in np.arange(1, 13):
 
-            df_new = df.rolling(window=lag).sum()
-            df_new = df_new.dropna()
-            df_new = df_new.sort_values(by='value', ascending=False)
-         #   df_new = df_new[df_new.index.month == month]
+        df_new = df.rolling(window=lag).sum()
+        df_new = df_new.dropna()
+        df_new = df_new.sort_values(by='value', ascending=False)
 
-            size = len(df_new)
+        size = len(df_new)
 
-            df_new['rank'] = np.arange(1, len(df_new) + 1)
-            df_new['size'] = np.repeat(size, size)
-            df_new['eddi'] = df_new.apply(lambda x: eddi_apply(x['rank'], x['size']), axis=1)
-            df_new['window'] = np.repeat(lag, size)
-            df_new['state_county'] = np.repeat(name, size)
+        df_new['rank'] = np.arange(1, len(df_new) + 1)
+        df_new['size'] = np.repeat(size, size)
+        df_new['eddi'] = df_new.apply(lambda x: eddi_apply(x['rank'], x['size']), axis=1)
+        df_new['window'] = np.repeat(lag, size)
+        df_new['state_county'] = np.repeat(name, size)
 
-            df_new = df_new.reset_index()
+        df_new = df_new.reset_index()
 
-            df_new['date'] = df_new['date'].dt.strftime('%Y-%m-%d')
+        df_new['date'] = df_new['date'].dt.strftime('%Y-%m-%d')
 
-            df_new['state'], df_new['county'] = df_new['state_county'].str.split('_', 1).str
-            df_new['year'], df_new['month'], df_new['day'] = df_new['date'].str.split('-').str
+        df_new['state'], df_new['county'] = df_new['state_county'].str.split('_', 1).str
+        df_new['year'], df_new['month'], df_new['day'] = df_new['date'].str.split('-').str
 
-            df_new = df_new.drop(columns=['state_county', 'rank', 'size', 'date', 'day', 'value'])
-            df_final = df_final.append(df_new, ignore_index=True)
+        df_new = df_new.drop(columns=['state_county', 'rank', 'size', 'date', 'day', 'value'])
+        df_final = df_final.append(df_new, ignore_index=True)
 
     return df_final
 
+# combines reorder data function and eddi_calc function to save a df of eddi values.
 def save_eddi():
 
     dat = reorder_data()
@@ -370,7 +370,7 @@ def get_nass_production(crop, state):
 
     parameters = {"source_desc": "SURVEY",
                   "year__LE": datetime.datetime.today().year,
-                  "agg_level_desc": "STATE",
+                  "agg_level_desc": "COUNTY",
                   "state_alpha": state,
                   "short_desc": data_item,
                   "commodity_desc": crop,
@@ -387,21 +387,34 @@ def get_nass_production(crop, state):
 
 
 # takes the json file returned from NASS API and turns it into a pandas dataframe
-def parse_nass_data(dat):
+def parse_nass_data(dat, data_type):
 
-    state, year, crop, value = [], [], [], []
+    state, county, year, crop, value = [], [], [], [], []
 
     for item in dat:
+
         state.append(item['state_alpha'])
         year.append(item['year'])
         crop.append(item['commodity_desc'])
         value.append(item['Value'])
 
+        if data_type == 'prod':
+            county.append(item['county_name'])
+
+    if data_type == 'prod':
+        return pd.DataFrame(
+            {'state': state,
+             'year': year,
+             'crop': crop,
+             'value': value,
+             'county': county
+             })
+
     return pd.DataFrame(
         {'state': state,
          'year': year,
          'crop': crop,
-         'value': value
+         'value': value,
          })
 
 
@@ -419,12 +432,14 @@ def save_nass_production():
             dat = get_nass_production(crop, state)
             all_data.append(dat)
 
-    dat_out = pd.concat(map(parse_nass_data, all_data), ignore_index=True)
+    dat_out = pd.concat(map(partial(parse_nass_data, data_type='prod'), all_data), ignore_index=True)
 
     out_name = "../data_frames/nass_production.csv"
 
     dat_out.to_csv(out_name)
 
+
+save_nass_production()
 
 # creates combination of all possible NASS entries and then saves out to csv using parse_nass_data function.
 def save_scvi():
@@ -441,7 +456,9 @@ def save_scvi():
             dat = get_nass_data(crop, year, state)
             all_data.append(dat)
 
-    dat_out = pd.concat(map(parse_nass_data, all_data), ignore_index=True)
+    dat_out = pd.concat(map(lambda x:
+
+        parse_nass_data(dat=all_data, data_type='val')), ignore_index=True)
 
     out_name = "../data_frames/nass_data.csv"
 
@@ -550,10 +567,11 @@ def run_r_prod():
 # creates HTML graph objects to be used in the shiny app.
 def run_r_graph():
 
-    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/save_popups.R"])
+    subprocess.call(["/usr/local/bin/Rscript", "--vanilla", "../R/save_popups.R"])
 
 
 # creates HTML table objects to be used in the shiny app.
 def run_r_mouse():
 
     subprocess.call(["/usr/local/bin/Rscript", "--vanilla", "../R/add_mouseover_data.R"])
+

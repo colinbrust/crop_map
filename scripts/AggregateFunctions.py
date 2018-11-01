@@ -16,7 +16,7 @@ def daily_process(date):
 
 def monthly_process():
 
-    if datetime.datetime.today().day == 1:
+    if datetime.datetime.today().day == 8:
 
         DataDownload.save_scvi()
         DataDownload.save_nass_production()
