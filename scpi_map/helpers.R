@@ -38,7 +38,7 @@ historical_plot <- function(state, county, stat, crop, dat, nass) {
     names(myColors) <- c("prod", "spi", "eddi")
     
     out_dat %>%
-      dplyr::left_join(nass, by = c("crop", "state", "year")) %>%
+      dplyr::left_join(nass, by = c("county" ,"crop", "state", "year")) %>%
       dplyr::select(-stat_value, -window, -month, -lab,
                     -alpha, -beta, -gamma, -rmse) %>%
       #dplyr::mutate(color = dplyr::if_else(scpi <= 0, "neg", "pos")) %>%

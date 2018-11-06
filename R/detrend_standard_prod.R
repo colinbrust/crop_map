@@ -12,7 +12,8 @@ spi_calc <- function(dat) {
       .$fitted
     } %>%
     tibble::as_tibble() %>%
-    tibble::add_column(year = dat$year) %>%
+    tibble::add_column(year = dat$year, 
+                       county = dat$county) %>%
     dplyr::rename(prod = `Series 1`)
 }
 
@@ -21,12 +22,23 @@ detrend_data <- function(fname) {
   suppressWarnings(fname %>% 
                      readr::read_csv(col_types = readr::cols()) %>% 
                      dplyr::select(-X1) %>%
-                     dplyr::group_by(crop, state) %>%
-                     dplyr::arrange(state, crop, year) %>%
-                     dplyr::mutate(detrended = pracma::detrend(value, tt = "linear")) 
+                     dplyr::mutate(county = county %>% 
+                                     tolower() %>%
+                                     stringr::str_replace_all(" ", "_") %>%
+                                     stringr::str_replace_all("&", "and")) %>%
+                     dplyr::group_by(crop, state, county) %>%
+                     dplyr::arrange(county, state, crop, year) %>%
+                     dplyr::filter(year >= 1979, 
+                                   county != "other_(combined)_counties",
+                                   !all(county == "sublette" & crop == "BARLEY"),
+                                   !all(county == "sweetwater" & crop == "WHEAT"),
+                                   !all(county == "uinta" & crop == "WHEAT")) %>%
+                     dplyr::mutate(detrended = pracma::detrend(value, tt = "linear")) %>%
+                     dplyr::filter(!is.na(detrended))
   )
   
 }
+
 
 "../data_frames/nass_production.csv" %>%
   detrend_data() %>% 

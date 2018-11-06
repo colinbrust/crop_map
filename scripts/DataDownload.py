@@ -439,8 +439,6 @@ def save_nass_production():
     dat_out.to_csv(out_name)
 
 
-save_nass_production()
-
 # creates combination of all possible NASS entries and then saves out to csv using parse_nass_data function.
 def save_scvi():
 
@@ -561,7 +559,7 @@ def run_r_scvi():
 # detrends and passes crop production values through spi function in R.
 def run_r_prod():
 
-    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/detrend_standard_prod.R"])
+    subprocess.call(["/usr/local/bin/Rscript", "--vanilla", "../R/detrend_standard_prod.R"])
 
 
 # creates HTML graph objects to be used in the shiny app.
