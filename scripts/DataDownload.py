@@ -11,8 +11,7 @@ import datetime
 import os
 import subprocess
 from functools import partial
-from scipy.stats import rankdata
-from scipy import signal
+
 
 # given a date, this function downloads pet and precip images for the area surrounding Montana.
 def download_data(d):
@@ -454,9 +453,7 @@ def save_scvi():
             dat = get_nass_data(crop, year, state)
             all_data.append(dat)
 
-    dat_out = pd.concat(map(lambda x:
-
-        parse_nass_data(dat=all_data, data_type='val')), ignore_index=True)
+    dat_out = pd.concat(map(partial(parse_nass_data, data_type='val'), all_data), ignore_index=True)
 
     out_name = "../data_frames/nass_data.csv"
 
@@ -540,32 +537,32 @@ def calc_scpi(stat):
     dat.to_csv("../data_frames/master_%s_scpi.csv" % stat)
 
 
-# Functions that are written in R. These either use the SCVI package or use R specific functions to
+# Functions that are written in R. These either use the SPEI package or use R specific functions to
 # create objects for the shiny app.
 
 # R script that calculates SPI and saves out a csv.
 # The SPI package for python only works on python 3
 def run_r_spi():
 
-    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/calc_spi.R"])
+    subprocess.call(["~/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/calc_spi.R"])
 
 
 # Detrends and passes scvi values through spi function in R.
 def run_r_scvi():
 
-    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/detrend_standard_scvi.R"])
+    subprocess.call(["~/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/detrend_standard_scvi.R"])
 
 
 # detrends and passes crop production values through spi function in R.
 def run_r_prod():
 
-    subprocess.call(["/usr/local/bin/Rscript", "--vanilla", "../R/detrend_standard_prod.R"])
+    subprocess.call(["~/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/detrend_standard_prod.R"])
 
 
 # creates HTML graph objects to be used in the shiny app.
 def run_r_graph():
 
-    subprocess.call(["/usr/local/bin/Rscript", "--vanilla", "../R/save_popups.R"])
+    subprocess.call(["~/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/save_popups.R"])
 
 
 # creates HTML table objects to be used in the shiny app.

@@ -56,6 +56,17 @@ ui <- bootstrapPage(
       #     "Evaporative Drought Demand Index (EDDI)" = "eddi"
       #   )
       # ),
+      selectInput(
+        "vari", "Variable:",
+        c(
+          "SCPI" = "scpi",
+          "SCVI" = "scvi",
+          "SPI" = "stat_value", 
+          "Alpha Coefficient" = "alpha", 
+          "Beta Coefficient" = "beta", 
+          "Gamma Coefficient" = "gamma"
+        )
+      ),
       actionButton("button", "Change Inputs")
     )
   )
@@ -100,7 +111,7 @@ server <- function(input,
 
   button_vals <- eventReactive(input$button, {
 
-    list(input$year, input$crop)#, input$stat)
+    list(input$year, input$crop, input$vari)#, input$stat)
 
   }, ignoreNULL = FALSE)
   
@@ -137,28 +148,37 @@ server <- function(input,
       labs <- out_dat$lab %>%
         as.list() %>%
         lapply(HTML)
-
-      col_out <- seq(min(out_dat$scpi, na.rm = T), max(out_dat$scpi, na.rm = T),
+    
+      var_use <- button_vals()[[3]]
+  
+      breaks_col <- out_dat %>%
+        dplyr::select(!!var_use) %>%
+        as.list() %>%
+        {.[[1]]}
+    
+      col_out <- seq(min(breaks_col, na.rm = T), max(breaks_col, na.rm = T),
                      length.out = 10) %>%
-        round(1)
+        round(2)
 
+      mapviewOptions(legend.pos = "bottomright")
+      
       mapview(out_dat,
               popup = out_plot,
-              zcol = c("scpi"),
+              zcol = c(var_use),
               label = labs,
               na.label = "No Data",
               col.regions = brewer.pal(10, "RdBu"),
               at = col_out,
-              layer.name = "SCPI (Standard Deviations)") %>%
+              layer.name = var_use) %>%
         addFeatures(states, weight = 3, color = "black") %>%
         setView(lng = -107.5, lat = 46, zoom = 5) %>%
-        addProviderTiles(providers$CartoDB.Positron) %>% 
-        addLegend(
-          position = 'bottomright',
-          colors = brewer.pal(10, "RdBu"),
-          labels = col_out,
-          title = "SCPI (Standard Deviations)"
-        )
+        addProviderTiles(providers$CartoDB.Positron) # %>% 
+        # addLegend(
+        #   position = 'bottomright',
+        #   colors = brewer.pal(10, "RdBu"),
+        #   labels = col_out,
+        #   title = "SCPI (Standard Deviations)"
+        # )
 
   })
 }
