@@ -20,23 +20,23 @@ add_hover_data <- function(stat) {
                              '<br><strong>State</strong>: ',
                              state,
                              '<br><strong>SCPI</strong>: ',
-                             scpi,
+                             round(scpi, 4),
                              '<br><strong>SCVI</strong>: ',
-                             scvi,
+                             round(scvi, 4),
                              '<br><strong>',toupper(stat),'</strong>: ',
-                             stat_value,
+                             round(stat_value, 4),
                              '<br><strong>RMSE</strong>: ',
-                             rmse,
+                             round(rmse, 4),
                              '<br><strong>Optimal Window</strong>: ', 
                              window,
                              '<br><strong>Optimal Month</strong>: ',
                              month.name[month],
                              '<br><strong>Alpha Coefficient</strong>: ',
-                             alpha,
+                             round(alpha, 4),
                              '<br><strong>Beta Coefficient</strong>: ', 
-                             beta,
+                             round(beta, 4),
                              '<br><strong>Gamma Coeffieient</strong>: ',
-                             gamma))
+                             round(gamma, 4)))
     
 }
   

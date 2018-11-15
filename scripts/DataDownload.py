@@ -569,4 +569,3 @@ def run_r_graph():
 def run_r_mouse():
 
     subprocess.call(["/usr/local/bin/Rscript", "--vanilla", "../R/add_mouseover_data.R"])
-

@@ -169,15 +169,16 @@ server <- function(input,
               na.label = "No Data",
               col.regions = brewer.pal(10, "RdBu"),
               at = col_out,
-              layer.name = var_use) %>%
+              layer.name = var_use,
+              legend = TRUE) %>%
         addFeatures(states, weight = 3, color = "black") %>%
         setView(lng = -107.5, lat = 46, zoom = 5) %>%
-        addProviderTiles(providers$CartoDB.Positron) # %>% 
+        addProviderTiles(providers$CartoDB.Positron) # %>%
         # addLegend(
         #   position = 'bottomright',
         #   colors = brewer.pal(10, "RdBu"),
         #   labels = col_out,
-        #   title = "SCPI (Standard Deviations)"
+        #   title = var_use
         # )
 
   })
