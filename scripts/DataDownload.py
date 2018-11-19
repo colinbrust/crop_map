@@ -544,28 +544,29 @@ def calc_scpi(stat):
 # The SPI package for python only works on python 3
 def run_r_spi():
 
-    subprocess.call(["~/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/calc_spi.R"])
+    subprocess.call(["/home/MARCO/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/calc_spi.R"])
 
 
 # Detrends and passes scvi values through spi function in R.
 def run_r_scvi():
 
-    subprocess.call(["~/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/detrend_standard_scvi.R"])
+    subprocess.call(["/home/MARCO/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/detrend_standard_scvi.R"])
 
 
 # detrends and passes crop production values through spi function in R.
 def run_r_prod():
 
-    subprocess.call(["~/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/detrend_standard_prod.R"])
+    subprocess.call(["/home/MARCO/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/detrend_standard_prod.R"])
 
 
 # creates HTML graph objects to be used in the shiny app.
 def run_r_graph():
 
-    subprocess.call(["~/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/save_popups.R"])
+    subprocess.call(["/home/MARCO/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/save_popups.R"])
 
 
 # creates HTML table objects to be used in the shiny app.
 def run_r_mouse():
 
-    subprocess.call(["/usr/local/bin/Rscript", "--vanilla", "../R/add_mouseover_data.R"])
+    subprocess.call(["/home/MARCO/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/add_mouseover_data.R"])
+

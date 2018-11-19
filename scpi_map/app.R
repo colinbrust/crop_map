@@ -150,7 +150,7 @@ server <- function(input,
         lapply(HTML)
     
       var_use <- button_vals()[[3]]
-  
+
       breaks_col <- out_dat %>%
         dplyr::select(!!var_use) %>%
         as.list() %>%
@@ -169,7 +169,7 @@ server <- function(input,
               na.label = "No Data",
               col.regions = brewer.pal(10, "RdBu"),
               at = col_out,
-              layer.name = var_use,
+              layer.name = toupper(var_use),
               legend = TRUE) %>%
         addFeatures(states, weight = 3, color = "black") %>%
         setView(lng = -107.5, lat = 46, zoom = 5) %>%

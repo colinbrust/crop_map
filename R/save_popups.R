@@ -14,7 +14,7 @@ save_plot_obj <- function(crop, stat, dat, outlines, nass) {
     dplyr::mutate(plots = list(historical_plot(state = state, county = county, stat = stat,
                                          crop = crop, dat = dat, nass = nass))) %>%
                                          {.$plots} %>%
-    mapview::popupGraph(width = 700, height = 350) 
+    mapview::popupGraph(type = 'svg', width = 500, height = 250) 
   
     saveRDS(pop_plots, file = out_name)
     
