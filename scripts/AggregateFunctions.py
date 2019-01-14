@@ -3,7 +3,7 @@ import datetime
 import os
 import glob
 
-os.chdir('/opt/rh/httpd24/root/var/www/cropindex.geol.umt.edu/scripts')
+os.chdir('/mnt/e/PycharmProjects/crop_map/scripts')
 
 
 def daily_process(date):
@@ -11,6 +11,8 @@ def daily_process(date):
     DataDownload.download_data(date)
 
     DataDownload.make_sum()
+
+    print str(date) + 'has downloaded'
 
     [os.remove(f) for f in glob.glob("../raw_images/*.nc")]
 
@@ -33,7 +35,8 @@ def monthly_process():
 
 
 [daily_process(str(d)) for d in DataDownload.download_latest()]
-monthly_process()
+#monthly_process()
+
 
 
 

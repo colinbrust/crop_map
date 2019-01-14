@@ -9,9 +9,10 @@ import pandas as pd
 import requests
 import datetime
 import os
+import sys
 import subprocess
 from functools import partial
-
+import rasterio
 
 # given a date, this function downloads pet and precip images for the area surrounding Montana.
 def download_data(d):
@@ -52,6 +53,16 @@ def check_date():
     return False
 
 
+# function that will be triggered if there is an error that occurs when downloading images
+def remove_latest(variable):
+
+    date_in = glob.glob("../mean_images/" + variable + "*")
+    date_in = sorted(date_in, key=lambda x: datetime.datetime.strptime(
+        x.split("/")[-1].split("_")[-1].replace(".tif", ""), '%Y-%m-%d'
+    ))
+
+    os.remove(date_in[-1])
+
 # stacks and sums numpy arrays which are then written back out as geotiffs.
 def sum_images(variable):
 
@@ -63,16 +74,27 @@ def sum_images(variable):
     summed_image = utilsRaster.RasterParameterIO(summed_image)
 
     current_image = glob.glob("../raw_images/" + variable + "*")[0]
-    current_image = utilsRaster.RasterParameterIO(current_image)
 
-    new_image = summed_image.array + current_image.array
+    try:
+        current_image = utilsRaster.RasterParameterIO(current_image)
 
-    out_name = "../mean_images/" + variable + "_" + str(date_use) + ".tif"
-    del_name = "../mean_images/" + variable + "_" + str(date_use_old) + ".tif"
+        new_image = summed_image.array + current_image.array
 
-    summed_image.write_array_to_geotiff(out_name, np.squeeze(new_image))
+        out_name = "../mean_images/" + variable + "_" + str(date_use) + ".tif"
+        del_name = "../mean_images/" + variable + "_" + str(date_use_old) + ".tif"
 
-    os.remove(del_name)
+        summed_image.write_array_to_geotiff(out_name, np.squeeze(new_image))
+
+        os.remove(del_name)
+
+    except rasterio.errors.RasterioIOError as e:
+        print e.args
+        print "There seems to be an issue with the downloaded raster. The download process will stop " \
+              "now and repeat tomorrow."
+        remove_latest('precip')
+        remove_latest('pet')
+        [os.remove(f) for f in glob.glob("../raw_images/*.nc")]
+        sys.exit(1)
 
 
 # depending on whether or not it is the first day of the month, either copies over an image or sums it.
@@ -122,6 +144,7 @@ def is_img_complete(f):
 def download_latest():
 
     date_in = glob.glob("../mean_images/precip*")
+    print date_in
     start = []
 
     for date in date_in:
@@ -133,7 +156,6 @@ def download_latest():
     end = end.date()
 
     return [start + datetime.timedelta(days=x) for x in range(0, (end - start).days)]
-
 
 # returns the name of the state given a geojson filename.
 def state_from_fname(fname):

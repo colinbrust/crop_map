@@ -79,16 +79,14 @@ class DataCollectionThredds:
                     pass
 
             if self.flip:
-                cmd = 'ncpdq -a lat,lon --ovr ' + filename + " " + filename
+
+                cmd = '/home/colin/miniconda2/envs/dawuap/bin/ncpdq -a lat,lon --ovr ' + filename + " " + filename
                 try:
                     subprocess.check_call(cmd, shell=True)
                 except subprocess.CalledProcessError as e:
                     print(e.args)
                     print("WARNING: couldnt swap coordinate of file " + filename +
                           " with exception error " + e.message)
-
-
-
 
 def switch(x):
     return {

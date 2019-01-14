@@ -79,15 +79,13 @@ states <- suppressWarnings(sf::read_sf("../boundaries/state_outlines.geojson") %
 
 dat <- readr::read_csv("../data_frames/scpi_use.csv", col_types = readr::cols())
 
-server <- function(input,
-                   output, session) {
+server <- function(input,output, session) {
 
   current_selection <- reactiveVal(NULL)
 
   observeEvent(input$year, {
     current_selection(input$year)
   })
-
 
   observe({
 
@@ -169,11 +167,13 @@ server <- function(input,
               na.label = "No Data",
               col.regions = brewer.pal(10, "RdBu"),
               at = col_out,
-              layer.name = toupper(var_use),
+              layer.name = toupper(dplyr::if_else(button_vals()[[3]] == 'stat_value', 
+                                                  'SPI', 
+                                                  button_vals()[[3]])),
               legend = TRUE) %>%
         addFeatures(states, weight = 3, color = "black") %>%
-        setView(lng = -107.5, lat = 46, zoom = 5) %>%
-        addProviderTiles(providers$CartoDB.Positron) # %>%
+        setView(lng = -107.5, lat = 46, zoom = 5)# %>%
+        # cropProviderTiles(providers$CartoDB.Positron) %>%
         # addLegend(
         #   position = 'bottomright',
         #   colors = brewer.pal(10, "RdBu"),
