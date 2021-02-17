@@ -16,16 +16,7 @@ if (lubridate::month(Sys.Date()) == 1) {
 
 ui <- bootstrapPage(
   title = "Standardized Crop Production Index",
-  tags$style(type = "text/css", "html, body {width:100%;height:100%}",
-             "div.info.legend.leaflet-control br {clear: both;}",
-             HTML(".shiny-notification {
-                  position:fixed;
-                  width: 16em;
-                  top: calc(40%);;
-                  left: calc(40%);;
-                  }
-                  "
-             )
+  tags$style(type = "text/css", "html, body {width:100%;height:100%}"
              ),
   mapview::mapviewOutput("map", width = "100%", height = "100%"),
   absolutePanel(
@@ -74,18 +65,19 @@ ui <- bootstrapPage(
 
 outlines <- sf::read_sf("../boundaries/all_merged.geojson") 
 
-states <- suppressWarnings(sf::read_sf("../boundaries/state_outlines.geojson") %>%
-  sf::st_simplify(dTolerance = 0.01))
+states <- sf::read_sf("../boundaries/state_outlines.geojson")
 
 dat <- readr::read_csv("../data_frames/scpi_use.csv", col_types = readr::cols())
 
-server <- function(input,output, session) {
+server <- function(input,
+                   output, session) {
 
   current_selection <- reactiveVal(NULL)
 
   observeEvent(input$year, {
     current_selection(input$year)
   })
+
 
   observe({
 
@@ -113,36 +105,22 @@ server <- function(input,output, session) {
 
   }, ignoreNULL = FALSE)
   
-  observe({
-    showNotification("Please Wait, Map is Loading 
-                     _________________________",
-                     duration = 20)
-  })
-  
-  observeEvent(input$button, {
-    showNotification("Please Wait, Loading Data 
-                     ________________________",
-                     duration = 5)
-  })
-  
   output$map <- renderLeaflet({
 
       out_dat <- dat %>%
         dplyr::filter(
           year == button_vals()[[1]],
           crop == button_vals()[[2]],
-          stat == "spi"#button_vals()[[3]]
+          stat == "spi"
         ) %>%
         dplyr::right_join(outlines, by = c("county", "state")) %>%
-        sf::st_as_sf() %>%
-        sf::st_simplify(dTolerance = 0.01)
+        sf::st_as_sf()
 
       out_plot <- list.files("../plot_data/", pattern = button_vals()[[2]],
                              full.names = T) %>%
         grep(pattern = 'spi', ., value = T) %>%
-        #grep(pattern = button_vals()[[3]], ., value = T) %>%
         readRDS()
-
+      
       labs <- out_dat$lab %>%
         as.list() %>%
         lapply(HTML)
@@ -172,8 +150,7 @@ server <- function(input,output, session) {
                                                   button_vals()[[3]])),
               legend = TRUE) %>%
         addFeatures(states, weight = 3, color = "black") %>%
-        setView(lng = -107.5, lat = 46, zoom = 5)# %>%
-        # cropProviderTiles(providers$CartoDB.Positron) %>%
+        setView(lng = -107.5, lat = 46, zoom = 5)
         # addLegend(
         #   position = 'bottomright',
         #   colors = brewer.pal(10, "RdBu"),
@@ -186,3 +163,4 @@ server <- function(input,output, session) {
 
 # Run the application
 shinyApp(ui = ui, server = server)
+

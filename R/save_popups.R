@@ -37,3 +37,18 @@ for (crop in crops) {
   }
 }
 
+
+testfun <- function() {
+  
+  mtcars %>%
+    ggplot(aes(x = wt, y = mpg)) + 
+    geom_point(size = 1)
+}
+
+pop_plots <- outlines %>%
+  dplyr::rowwise() %>%
+  dplyr::mutate(plots = list(testfun())) %>%
+  {.$plots} %>%
+  mapview::popupGraph(type = 'svg', width = 500, height = 250) 
+
+saveRDS(pop_plots, file = '../plot_data/test.Rdata')

@@ -144,7 +144,6 @@ def is_img_complete(f):
 def download_latest():
 
     date_in = glob.glob("../mean_images/precip*")
-    print date_in
     start = []
 
     for date in date_in:
@@ -152,7 +151,7 @@ def download_latest():
 
     start = max(map(str_to_date, start)) + datetime.timedelta(days=1)
 
-    end = datetime.datetime.today() - datetime.timedelta(days=1)
+    end = datetime.datetime.today() - datetime.timedelta(days=3)
     end = end.date()
 
     return [start + datetime.timedelta(days=x) for x in range(0, (end - start).days)]
@@ -372,8 +371,9 @@ def get_nass_data(crop, year, state):
                   "reference_period_desc": "MARKETING YEAR"
                   }
 
+    key = os.environ.get('NASS_KEY')
     response = requests.get('http://quickstats.nass.usda.gov/api/api_GET/'
-                            '?key=41C2FA23-531A-3899-B471-871B13C2748C',
+                            '?key='+key,
                             params=parameters)
 
     return response.json()['data']
@@ -400,8 +400,9 @@ def get_nass_production(crop, state):
                   "reference_period_desc": "YEAR"
                   }
 
+    key = os.environ.get('NASS_KEY')
     response = requests.get('http://quickstats.nass.usda.gov/api/api_GET/'
-                            '?key=41C2FA23-531A-3899-B471-871B13C2748C',
+                            '?key='+key,
                             params=parameters)
 
     return response.json()['data']
@@ -566,29 +567,33 @@ def calc_scpi(stat):
 # The SPI package for python only works on python 3
 def run_r_spi():
 
-    subprocess.call(["/home/MARCO/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/calc_spi.R"])
+    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/calc_spi.R"])
 
 
 # Detrends and passes scvi values through spi function in R.
 def run_r_scvi():
 
-    subprocess.call(["/home/MARCO/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/detrend_standard_scvi.R"])
+    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/detrend_standard_scvi.R"])
 
 
 # detrends and passes crop production values through spi function in R.
 def run_r_prod():
 
-    subprocess.call(["/home/MARCO/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/detrend_standard_prod.R"])
+    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/detrend_standard_prod.R"])
 
 
 # creates HTML graph objects to be used in the shiny app.
 def run_r_graph():
 
-    subprocess.call(["/home/MARCO/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/save_popups.R"])
+    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/save_popups.R"])
 
 
 # creates HTML table objects to be used in the shiny app.
 def run_r_mouse():
 
-    subprocess.call(["/home/MARCO/anaconda2/envs/test/bin/Rscript", "--vanilla", "../R/add_mouseover_data.R"])
+    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/add_mouseover_data.R"])
+
+def run_r_thin(): 
+
+    subprocess.call(["/usr/bin/Rscript", "--vanilla", "../R/thin_df.R"])
 

@@ -42,10 +42,10 @@ historical_plot <- function(state, county, stat, crop, dat, nass) {
       dplyr::select(-stat_value, -window, -month, -lab,
                     -alpha, -beta, -gamma, -rmse) %>%
       #dplyr::mutate(color = dplyr::if_else(scpi <= 0, "neg", "pos")) %>%
-      dplyr::filter(!is.na(scpi), !is.na(prod)) %>% 
+      #dplyr::filter(!is.na(scpi), !is.na(prod)) %>% 
       tidyr::spread(stat, scpi) %>%
       tidyr::gather(key = "metric", value = "value", 
-                    prod, eddi, spi, na.rm = T) %>%
+                    prod, eddi, spi, na.rm = F) %>%
       dplyr::filter(metric == !!stat | metric == "prod") %>% 
       dplyr::mutate(metric = factor(metric)) %>%
       ggplot(aes(x = year, y = value, color = metric)) + 

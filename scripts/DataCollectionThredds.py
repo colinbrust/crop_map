@@ -54,8 +54,8 @@ class DataCollectionThredds:
         url = self.base_url + '/agg_met_' + result.get('abbreviation') + '_1979_CurrentYear_CONUS.nc?' + result.get('variable') \
             + '&north=' + str(self.bounds.get('north')) + '&west=' + str(self.bounds.get('west')) \
             + '&east=' + str(self.bounds.get('east')) + '&south=' + str(self.bounds.get('south')) \
-            + '&disableProjSubset=on&horizStride=1' + '&time_start=' + start + '&time_end=' + end \
-            + '&timeStride=1&addLatLon=true&accept=netcdf4'
+            + '&horizStride=1' + '&time_start=' + start + '&time_end=' + end \
+            + '&timeStride=1&accept=netcdf'
 
         return url, filename
 
@@ -79,14 +79,16 @@ class DataCollectionThredds:
                     pass
 
             if self.flip:
-
-                cmd = '/home/colin/miniconda2/envs/dawuap/bin/ncpdq -a lat,lon --ovr ' + filename + " " + filename
+                cmd = 'ncpdq -a lat,lon --ovr ' + filename + " " + filename
                 try:
                     subprocess.check_call(cmd, shell=True)
                 except subprocess.CalledProcessError as e:
                     print(e.args)
                     print("WARNING: couldnt swap coordinate of file " + filename +
                           " with exception error " + e.message)
+
+
+
 
 def switch(x):
     return {

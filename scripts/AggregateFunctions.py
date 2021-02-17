@@ -3,8 +3,7 @@ import datetime
 import os
 import glob
 
-os.chdir('/mnt/e/PycharmProjects/crop_map/scripts')
-
+os.chdir('/home/colin.brust/workspace/scpi_map/scripts')
 
 def daily_process(date):
 
@@ -12,14 +11,12 @@ def daily_process(date):
 
     DataDownload.make_sum()
 
-    print str(date) + 'has downloaded'
-
     [os.remove(f) for f in glob.glob("../raw_images/*.nc")]
 
 
 def monthly_process():
 
-    if datetime.datetime.today().day == 3:
+    if datetime.datetime.today().day == 29:
 
         DataDownload.save_scvi()
         DataDownload.save_nass_production()
@@ -32,12 +29,12 @@ def monthly_process():
         DataDownload.calc_scpi('eddi')
         DataDownload.run_r_graph()
         DataDownload.run_r_mouse()
+        DataDownload.run_r_thin()
 
 
 [daily_process(str(d)) for d in DataDownload.download_latest()]
-#monthly_process()
-
-
+monthly_process()
+print('Complete')
 
 
 
