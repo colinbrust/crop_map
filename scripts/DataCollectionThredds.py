@@ -1,6 +1,4 @@
-
-from __future__ import print_function
-import urllib as urllib2
+import urllib
 import argparse
 import dateutil.parser
 import fiona
@@ -65,12 +63,12 @@ class DataCollectionThredds:
 
             url, filename = self.build_url_filename(local_path, attribute)
             try:
-                response = urllib2.urlopen(url)
+                response = urllib.request.urlopen(url)
                 #chunk_read(response, report_hook=chunk_report)
                 with open(filename, 'wb') as out_file:
                     copyfileobj(response, out_file, chunk_report)
 
-            except urllib2.URLError, err:
+            except urllib.request.URLError as err:
                 print('error ', err.reason)
             finally:
                 try:
@@ -86,8 +84,6 @@ class DataCollectionThredds:
                     print(e.args)
                     print("WARNING: couldnt swap coordinate of file " + filename +
                           " with exception error " + e.message)
-
-
 
 
 def switch(x):
@@ -142,7 +138,6 @@ if __name__ == "__main__":
     parser.add_argument('--flip', dest='flip', action='store_true',
                         help='flip netcdf file coordinates (Needed for the NKN REACCH [metdata] dataset)')
 
-
     sp = parser.add_subparsers(dest='BBoxType')
     groupa = sp.add_parser('bbox', help='Bounding Box coordinates')
     groupa.add_argument('-nb', dest='north_bound', type=float, help='north bound', required=True)
@@ -153,7 +148,6 @@ if __name__ == "__main__":
     groupb = sp.add_parser('vectorFile', help='Bounding Box coordinates from vector file')
     groupb.add_argument('filename', type=str, help='vector File with area to be covered by climate data')
 
-    #args = parser.parse_args("-ds 2009-08-30 -de 2009-09-1 -aprecip vectorFile ../tests/test_data/mt_network.shp".split(" "))
     args = parser.parse_args()
 
     print(args)

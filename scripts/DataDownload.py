@@ -1,3 +1,5 @@
+import sys
+sys.path.append('/mnt/e/PycharmProjects/old_misc_projects/crop_map/scripts')
 from DataCollectionThredds import build_request
 from argparse import Namespace
 import numpy as np
@@ -9,7 +11,6 @@ import pandas as pd
 import requests
 import datetime
 import os
-import sys
 import subprocess
 from functools import partial
 import rasterio
@@ -88,9 +89,10 @@ def sum_images(variable):
         os.remove(del_name)
 
     except rasterio.errors.RasterioIOError as e:
-        print e.args
-        print "There seems to be an issue with the downloaded raster. The download process will stop " \
-              "now and repeat tomorrow."
+
+        print(e.args)
+        print("There seems to be an issue with the downloaded raster. The download process will stop now and repeat "
+              "tomorrow.")
         remove_latest('precip')
         remove_latest('pet')
         [os.remove(f) for f in glob.glob("../raw_images/*.nc")]
@@ -156,6 +158,7 @@ def download_latest():
 
     return [start + datetime.timedelta(days=x) for x in range(0, (end - start).days)]
 
+
 # returns the name of the state given a geojson filename.
 def state_from_fname(fname):
 
@@ -214,7 +217,6 @@ def update_csv():
     ppt = csv['variable'] == 'precip'
     ppt = csv[ppt]
     ppt_date = ppt['date'].tolist()
-
 
     pet = csv['variable'] == 'pet'
     pet = csv[pet]
@@ -373,7 +375,7 @@ def get_nass_data(crop, year, state):
 
     key = os.environ.get('NASS_KEY')
     response = requests.get('http://quickstats.nass.usda.gov/api/api_GET/'
-                            '?key='+key,
+                            '?key='+'41C2FA23-531A-3899-B471-871B13C2748C',
                             params=parameters)
 
     return response.json()['data']
@@ -402,7 +404,7 @@ def get_nass_production(crop, state):
 
     key = os.environ.get('NASS_KEY')
     response = requests.get('http://quickstats.nass.usda.gov/api/api_GET/'
-                            '?key='+key,
+                            '?key='+'41C2FA23-531A-3899-B471-871B13C2748C',
                             params=parameters)
 
     return response.json()['data']

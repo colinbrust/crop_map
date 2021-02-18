@@ -22,7 +22,7 @@ detrend_data <- function(fname) {
   suppressWarnings(fname %>% 
                      readr::read_csv(col_types = readr::cols()) %>% 
                      dplyr::select(-X1) %>%
-                     dplyr::mutate(county = county %>% 
+                     dplyr::mutate(county = county %>%
                                      tolower() %>%
                                      stringr::str_replace_all(" ", "_") %>%
                                      stringr::str_replace_all("&", "and")) %>%
@@ -30,6 +30,7 @@ detrend_data <- function(fname) {
                      dplyr::arrange(county, state, crop, year) %>%
                      dplyr::filter(year >= 1979, 
                                    county != "other_(combined)_counties",
+                                   county != 'other_counties',
                                    !all(county == "sublette" & crop == "BARLEY"),
                                    !all(county == "sweetwater" & crop == "WHEAT"),
                                    !all(county == "uinta" & crop == "WHEAT")) %>%
@@ -40,8 +41,8 @@ detrend_data <- function(fname) {
 }
 
 
-"../data_frames/nass_production.csv" %>%
-  detrend_data() %>% 
+"../data_frames/nass_production.csv" %>% 
+  detrend_data() %>%
   dplyr::do(spi_calc(.)) %>%
   dplyr::ungroup() %>%
   dplyr::mutate(crop = dplyr::if_else(crop == "BARLEY", "bar", crop),

@@ -10,11 +10,12 @@ save_plot_obj <- function(crop, stat, dat, outlines, nass) {
   out_name <- paste0("../plot_data/", crop, "_", stat, "_plots.RData")
   
   pop_plots <- outlines %>%
+    dplyr::arrange(state, county) %>% 
     dplyr::rowwise() %>%
     dplyr::mutate(plots = list(historical_plot(state = state, county = county, stat = stat,
                                          crop = crop, dat = dat, nass = nass))) %>%
                                          {.$plots} %>%
-    mapview::popupGraph(type = 'svg', width = 500, height = 250) 
+    leafpop::popupGraph(type = 'svg', width = 500, height = 250) 
   
     saveRDS(pop_plots, file = out_name)
     
@@ -36,19 +37,3 @@ for (crop in crops) {
     save_plot_obj(crop, stat, dat, outlines, nass)
   }
 }
-
-
-testfun <- function() {
-  
-  mtcars %>%
-    ggplot(aes(x = wt, y = mpg)) + 
-    geom_point(size = 1)
-}
-
-pop_plots <- outlines %>%
-  dplyr::rowwise() %>%
-  dplyr::mutate(plots = list(testfun())) %>%
-  {.$plots} %>%
-  mapview::popupGraph(type = 'svg', width = 500, height = 250) 
-
-saveRDS(pop_plots, file = '../plot_data/test.Rdata')

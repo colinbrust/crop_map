@@ -114,7 +114,8 @@ server <- function(input,
           stat == "spi"
         ) %>%
         dplyr::right_join(outlines, by = c("county", "state")) %>%
-        sf::st_as_sf()
+        sf::st_as_sf() %>% 
+        dplyr::arrange(state, county)
 
       out_plot <- list.files("../plot_data/", pattern = button_vals()[[2]],
                              full.names = T) %>%
@@ -149,7 +150,7 @@ server <- function(input,
                                                   'SPI', 
                                                   button_vals()[[3]])),
               legend = TRUE) %>%
-        addFeatures(states, weight = 3, color = "black") %>%
+        leafem::addFeatures(states, weight = 3, color = "black") %>%
         setView(lng = -107.5, lat = 46, zoom = 5)
         # addLegend(
         #   position = 'bottomright',
